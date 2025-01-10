@@ -1,2 +1,5 @@
 frontend/firebase configuration.js
 frontend/.env.local
+node_modules
+dist
+.env*
