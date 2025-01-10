@@ -2,19 +2,23 @@
 
 ## Frontend Core
 
-- Next.js 14 (in SPA mode)
-- React 18
+- Next.js (in SPA mode)
+- React
 - TypeScript
 - Tailwind CSS + Shadcn/ui
+- WebSocket client (socket.io-client)
+- Redux Toolkit for state management
+- React Query for server state management
 
 ## Backend Services
 
 - Node.js
 - Express
-- Firebase
-- Authentication (Google & GitHub login)
-- Realtime Database
-- Storage (file uploads)
+- Socket.io
+- Redis
+- Firebase (authentication)
+- AWS DynamoDB (database)
+- AWS S3 (file storage)
 - AWS Bedrock (AI features)
 
 ## Infrastructure
