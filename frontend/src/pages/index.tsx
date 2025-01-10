@@ -1,6 +1,34 @@
 import Head from 'next/head';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Home() {
+  const { user, loading, error, signInWithGoogle, logout } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Slack2</h1>
+          {error && <div className="text-red-500 mb-4">{error}</div>}
+          <button
+            onClick={signInWithGoogle}
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors"
+          >
+            Sign in with Google
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Head>
@@ -14,7 +42,18 @@ export default function Home() {
           {/* Sidebar */}
           <div className="w-64 bg-gray-800 text-white">
             <div className="p-4">
-              <h1 className="text-xl font-bold">Slack2</h1>
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold">Slack2</h1>
+                <button
+                  onClick={logout}
+                  className="text-sm bg-red-500 px-2 py-1 rounded hover:bg-red-600 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+              <div className="mt-2 text-sm text-gray-300">
+                {user.email}
+              </div>
             </div>
           </div>
 
