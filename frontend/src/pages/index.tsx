@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useAuth } from '../hooks/useAuth';
+import { ChannelsList } from '../components/ChannelsList';
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
@@ -54,6 +55,7 @@ export default function Home() {
               <div className="mt-2 text-sm text-gray-300">
                 {user.email}
               </div>
+              <ChannelsList user={user} />
             </div>
           </div>
 
