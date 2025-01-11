@@ -53,9 +53,12 @@ export default function Home() {
                 </button>
               </div>
               <div className="mt-2 text-sm text-gray-300">
-                {user.email}
+                {user.email ?? ''}
               </div>
-              <ChannelsList user={user} />
+              <ChannelsList user={{
+                uid: user.uid,
+                email: user.email
+              }} />
             </div>
           </div>
 

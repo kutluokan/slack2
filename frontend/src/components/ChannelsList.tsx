@@ -7,10 +7,10 @@ interface Channel {
   isPrivate: boolean;
 }
 
-interface User {
+type User = {
   uid: string;
-  email?: string;
-}
+  email: string | null;
+};
 
 export const ChannelsList = ({ user }: { user: User }) => {
   const [channels, setChannels] = useState<Channel[]>([]);
