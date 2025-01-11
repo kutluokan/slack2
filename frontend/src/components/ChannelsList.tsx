@@ -6,8 +6,6 @@ interface Channel {
   name: string;
   createdBy: string;
   createdAt: number;
-  isPrivate: boolean;
-  members: string[];
 }
 
 interface ChannelsListProps {

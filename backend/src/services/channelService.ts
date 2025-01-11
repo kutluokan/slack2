@@ -8,8 +8,6 @@ export interface Channel {
   name: string;
   createdBy: string;
   createdAt: number;
-  isPrivate: boolean;
-  members: string[];
 }
 
 export const channelService = {
@@ -18,8 +16,6 @@ export const channelService = {
       ...channel,
       channelId: `channel_${Date.now()}`,
       createdAt: Date.now(),
-      isPrivate: false,
-      members: [],
     };
 
     const command = new PutCommand({
