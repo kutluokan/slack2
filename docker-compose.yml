@@ -18,6 +18,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
+    env_file:
+      - ./backend/.env
     environment:
       - PORT=4000
       - FRONTEND_URL=http://frontend:3000

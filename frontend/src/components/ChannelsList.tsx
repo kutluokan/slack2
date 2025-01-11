@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { socket } from '../config/socket';
+import { socket, connectSocket } from '../config/socket';
 
 interface Channel {
   channelId: string;
@@ -7,40 +7,52 @@ interface Channel {
   isPrivate: boolean;
 }
 
-export const ChannelsList = ({ user }: { user: any }) => {
+interface User {
+  uid: string;
+  email?: string;
+}
+
+export const ChannelsList = ({ user }: { user: User }) => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
 
   useEffect(() => {
-    socket.emit('get_channels');
+    if (user?.uid) {
+      connectSocket(user.uid);
+      socket.emit('get_channels');
 
-    socket.on('channels', (channelList) => {
-      setChannels(channelList);
-    });
+      socket.on('channels', (channelList: Channel[]) => {
+        setChannels(channelList);
+      });
 
-    socket.on('channel_created', (newChannel) => {
-      setChannels(prev => [...prev, newChannel]);
-    });
+      socket.on('channel_created', (newChannel: Channel) => {
+        setChannels(prev => [...prev, newChannel]);
+      });
 
-    return () => {
-      socket.off('channels');
-      socket.off('channel_created');
-    };
-  }, []);
+      return () => {
+        socket.off('channels');
+        socket.off('channel_created');
+      };
+    }
+  }, [user?.uid]);
 
   const createChannel = async () => {
     if (!newChannelName.trim()) return;
 
-    socket.emit('create_channel', {
-      name: newChannelName,
-      createdBy: user.uid,
-      isPrivate: false,
-      members: [user.uid]
-    });
+    try {
+      socket.emit('create_channel', {
+        name: newChannelName.trim(),
+        createdBy: user.uid,
+        isPrivate: false,
+        members: [user.uid]
+      });
 
-    setNewChannelName('');
-    setIsCreating(false);
+      setNewChannelName('');
+      setIsCreating(false);
+    } catch (error) {
+      console.error('Error creating channel:', error);
+    }
   };
 
   return (

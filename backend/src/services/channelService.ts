@@ -1,4 +1,4 @@
-import { PutCommand, QueryCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, ScanCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb";
 
 const TABLE_NAME = "K_Channels";
@@ -40,10 +40,9 @@ export const channelService = {
   },
 
   async getUserChannels(userId: string) {
-    const command = new QueryCommand({
+    const command = new ScanCommand({
       TableName: TABLE_NAME,
-      IndexName: "MemberIndex",
-      KeyConditionExpression: "contains(members, :userId)",
+      FilterExpression: "contains(members, :userId)",
       ExpressionAttributeValues: {
         ":userId": userId,
       },

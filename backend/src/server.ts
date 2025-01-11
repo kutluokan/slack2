@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { messageService, Message } from './services/messageService';
 import { channelService } from './services/channelService';
+import { userService } from './services/userService';
 
 dotenv.config();
 
@@ -31,8 +32,17 @@ app.get('/health', (req, res) => {
 });
 
 // Socket.io connection handling
+io.use((socket, next) => {
+  const userId = socket.handshake.auth.userId;
+  if (!userId) {
+    return next(new Error("User ID not provided"));
+  }
+  socket.data.userId = userId;
+  next();
+});
+
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('User connected:', socket.id, 'User ID:', socket.data.userId);
 
   socket.on('join_channel', (channelId: string) => {
     socket.join(channelId);
@@ -66,7 +76,10 @@ io.on('connection', (socket) => {
 
   socket.on('create_channel', async (data) => {
     try {
-      const channel = await channelService.createChannel(data);
+      const channel = await channelService.createChannel({
+        ...data,
+        members: [...(data.members || []), socket.data.userId]
+      });
       io.emit('channel_created', channel); // Broadcast to all clients
     } catch (error) {
       console.error('Error creating channel:', error);
@@ -81,6 +94,16 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error fetching channels:', error);
       socket.emit('error', 'Failed to fetch channels');
+    }
+  });
+
+  socket.on('sync_user', async (userData) => {
+    try {
+      const user = await userService.createOrUpdateUser(userData);
+      socket.emit('user_synced', user);
+    } catch (error) {
+      console.error('Error syncing user:', error);
+      socket.emit('error', 'Failed to sync user data');
     }
   });
 
