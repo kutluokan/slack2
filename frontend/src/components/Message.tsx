@@ -90,8 +90,10 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply }: Me
               <button
                 key={emoji}
                 onClick={() => {
-                  onReactionAdd(message.messageId, emoji);
-                  setShowEmojiPicker(false);
+                  if (message.messageId) {
+                    onReactionAdd(message.messageId, emoji);
+                    setShowEmojiPicker(false);
+                  }
                 }}
                 className="hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
               >

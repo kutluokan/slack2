@@ -4,7 +4,10 @@ import { socket, connectSocket } from '../config/socket';
 interface Channel {
   channelId: string;
   name: string;
+  createdBy: string;
+  createdAt: number;
   isPrivate: boolean;
+  members: string[];
 }
 
 interface ChannelsListProps {
@@ -23,20 +26,36 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
 
   useEffect(() => {
     if (user?.uid) {
-      connectSocket(user.uid);
-      socket.emit('get_channels');
+      // Ensure socket is connected
+      const initializeSocket = async () => {
+        await connectSocket(user.uid);
+        socket.emit('get_channels');
+      };
 
-      socket.on('channels', (channelList: Channel[]) => {
+      initializeSocket();
+
+      // Handle socket events
+      const handleChannels = (channelList: Channel[]) => {
         setChannels(channelList);
-      });
+      };
 
-      socket.on('channel_created', (newChannel: Channel) => {
+      const handleChannelCreated = (newChannel: Channel) => {
         setChannels(prev => [...prev, newChannel]);
+      };
+
+      // Listen for events
+      socket.on('channels', handleChannels);
+      socket.on('channel_created', handleChannelCreated);
+      
+      // Handle reconnection
+      socket.on('connect', () => {
+        socket.emit('get_channels');
       });
 
       return () => {
-        socket.off('channels');
-        socket.off('channel_created');
+        socket.off('channels', handleChannels);
+        socket.off('channel_created', handleChannelCreated);
+        socket.off('connect');
       };
     }
   }, [user?.uid]);
@@ -48,8 +67,6 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
       socket.emit('create_channel', {
         name: newChannelName.trim(),
         createdBy: user.uid,
-        isPrivate: false,
-        members: [user.uid]
       });
 
       setNewChannelName('');

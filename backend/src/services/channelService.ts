@@ -18,6 +18,8 @@ export const channelService = {
       ...channel,
       channelId: `channel_${Date.now()}`,
       createdAt: Date.now(),
+      isPrivate: false,
+      members: [],
     };
 
     const command = new PutCommand({
@@ -42,10 +44,6 @@ export const channelService = {
   async getUserChannels(userId: string) {
     const command = new ScanCommand({
       TableName: TABLE_NAME,
-      FilterExpression: "contains(members, :userId)",
-      ExpressionAttributeValues: {
-        ":userId": userId,
-      },
     });
 
     const response = await docClient.send(command);

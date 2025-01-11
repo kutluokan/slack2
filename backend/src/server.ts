@@ -76,10 +76,7 @@ io.on('connection', (socket) => {
 
   socket.on('create_channel', async (data) => {
     try {
-      const channel = await channelService.createChannel({
-        ...data,
-        members: [...(data.members || []), socket.data.userId]
-      });
+      const channel = await channelService.createChannel(data);
       io.emit('channel_created', channel); // Broadcast to all clients
     } catch (error) {
       console.error('Error creating channel:', error);
@@ -107,12 +104,26 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('add_reaction', async ({ messageId, emoji }) => {
+  socket.on('add_reaction', async (data) => {
     try {
+      if (!data || !data.messageId || !data.emoji) {
+        throw new Error('Missing required reaction data');
+      }
+
       const userId = socket.data.userId;
-      const message = await messageService.getMessage(messageId);
-      await messageService.addReaction(messageId, emoji, userId);
-      io.to(message.channelId).emit('reaction_added', { messageId, emoji, userId });
+      const [channelId] = data.messageId.split('#');
+      
+      if (!channelId) {
+        throw new Error('Invalid message ID format');
+      }
+
+      const result = await messageService.addReaction(data.messageId, data.emoji, userId);
+      io.to(channelId).emit('reaction_added', { 
+        messageId: data.messageId, 
+        emoji: data.emoji, 
+        userId,
+        reactions: result.reactions 
+      });
     } catch (error) {
       console.error('Error adding reaction:', error);
       socket.emit('error', 'Failed to add reaction');

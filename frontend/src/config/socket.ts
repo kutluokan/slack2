@@ -12,7 +12,9 @@ export const socket = io(SOCKET_URL, {
   autoConnect: false,
   reconnection: true,
   reconnectionDelay: 1000,
-  reconnectionAttempts: 5,
+  reconnectionAttempts: Infinity,
+  timeout: 10000,
+  transports: ['websocket', 'polling']
 }) as CustomSocket;
 
 export const connectSocket = (userId: string) => {
@@ -30,5 +32,17 @@ export const connectSocket = (userId: string) => {
 
   socket.on('connect_error', (err: Error) => {
     console.error('Socket connection error:', err);
+    setTimeout(() => {
+      if (!socket.connected) {
+        socket.connect();
+      }
+    }, 2000);
+  });
+
+  socket.on('disconnect', (reason: string) => {
+    console.log('Socket disconnected:', reason);
+    if (reason === 'io server disconnect') {
+      socket.connect();
+    }
   });
 }; 

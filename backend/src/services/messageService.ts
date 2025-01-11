@@ -54,40 +54,66 @@ export const messageService = {
   },
 
   async addReaction(messageId: string, emoji: string, userId: string) {
-    const message = await this.getMessage(messageId);
-    if (!message) throw new Error('Message not found');
+    if (!messageId || !emoji || !userId) {
+      throw new Error('Missing required reaction parameters');
+    }
 
-    const reactions = message.reactions || {};
-    const existingReactions = reactions[emoji] || [];
+    const [channelId, timestamp] = messageId.split('#');
     
-    // Toggle reaction
-    const newReactions = existingReactions.includes(userId)
-      ? existingReactions.filter(id => id !== userId)
-      : [...existingReactions, userId];
+    if (!channelId || !timestamp) {
+      throw new Error('Invalid message ID format');
+    }
+
+    // First get the current message to check existing reactions
+    const getMessage = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        channelId,
+        timestamp: parseInt(timestamp)
+      }
+    });
+
+    const currentMessage = await docClient.send(getMessage);
+    const currentReactions = currentMessage.Item?.reactions || {};
+    
+    // Update or create the reaction array for this emoji
+    const updatedReactions = {
+      ...currentReactions,
+      [emoji]: currentReactions[emoji] 
+        ? Array.from(new Set([...currentReactions[emoji], userId]))
+        : [userId]
+    };
 
     const command = new UpdateCommand({
       TableName: TABLE_NAME,
       Key: {
-        messageId,
-        channelId: message.channelId
+        channelId,
+        timestamp: parseInt(timestamp)
       },
-      UpdateExpression: 'SET reactions.#emoji = :users',
-      ExpressionAttributeNames: {
-        '#emoji': emoji
-      },
+      UpdateExpression: 'SET reactions = :reactions',
       ExpressionAttributeValues: {
-        ':users': newReactions
-      }
+        ':reactions': updatedReactions
+      },
+      ReturnValues: 'ALL_NEW'
     });
 
-    await docClient.send(command);
-    return { messageId, emoji, reactions: { [emoji]: newReactions } };
+    const response = await docClient.send(command);
+    return { 
+      messageId, 
+      emoji, 
+      reactions: response.Attributes?.reactions || {} 
+    };
   },
 
   async getMessage(messageId: string) {
+    const [channelId, timestamp] = messageId.split('#');
+    
     const command = new GetCommand({
       TableName: TABLE_NAME,
-      Key: { messageId }
+      Key: {
+        channelId,
+        timestamp: parseInt(timestamp)
+      }
     });
 
     const response = await docClient.send(command);

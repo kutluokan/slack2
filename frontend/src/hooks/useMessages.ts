@@ -16,6 +16,7 @@ interface ReactionPayload {
   messageId: string;
   emoji: string;
   userId: string;
+  reactions: { [key: string]: string[] };
 }
 
 export const useMessages = (channelId: string) => {
@@ -33,16 +34,12 @@ export const useMessages = (channelId: string) => {
       setMessages(prev => [...prev, newMessage]);
     });
 
-    socket.on('reaction_added', ({ messageId, emoji, userId }: ReactionPayload) => {
+    socket.on('reaction_added', ({ messageId, reactions }: Pick<ReactionPayload, 'messageId' | 'reactions'>) => {
       setMessages(prev => prev.map(msg => {
         if (msg.messageId === messageId) {
-          const reactions = msg.reactions || {};
           return {
             ...msg,
-            reactions: {
-              ...reactions,
-              [emoji]: [...(reactions[emoji] || []), userId]
-            }
+            reactions: reactions
           };
         }
         return msg;
