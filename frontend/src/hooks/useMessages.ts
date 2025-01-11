@@ -2,24 +2,29 @@ import { useEffect, useState } from 'react';
 import { socket } from '../config/socket';
 
 interface Message {
+  messageId: string;
   channelId: string;
   timestamp: number;
   userId: string;
   content: string;
   username: string;
+  reactions?: { [key: string]: string[] };
+  parentMessageId?: string;
+}
+
+interface ReactionPayload {
+  messageId: string;
+  emoji: string;
+  userId: string;
 }
 
 export const useMessages = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    // Join channel
     socket.emit('join_channel', channelId);
-    
-    // Get existing messages
     socket.emit('get_messages', channelId);
 
-    // Listen for messages
     socket.on('messages', (channelMessages: Message[]) => {
       setMessages(channelMessages);
     });
@@ -28,21 +33,43 @@ export const useMessages = (channelId: string) => {
       setMessages(prev => [...prev, newMessage]);
     });
 
+    socket.on('reaction_added', ({ messageId, emoji, userId }: ReactionPayload) => {
+      setMessages(prev => prev.map(msg => {
+        if (msg.messageId === messageId) {
+          const reactions = msg.reactions || {};
+          return {
+            ...msg,
+            reactions: {
+              ...reactions,
+              [emoji]: [...(reactions[emoji] || []), userId]
+            }
+          };
+        }
+        return msg;
+      }));
+    });
+
     return () => {
       socket.off('messages');
       socket.off('message');
+      socket.off('reaction_added');
     };
   }, [channelId]);
 
-  const sendMessage = (content: string, userId: string, username: string) => {
-    const messageData: Omit<Message, 'timestamp'> = {
+  const sendMessage = (content: string, userId: string, username: string, parentMessageId?: string) => {
+    const messageData = {
       channelId,
       userId,
       content,
       username,
+      parentMessageId
     };
     socket.emit('message', messageData);
   };
 
-  return { messages, sendMessage };
+  const addReaction = (messageId: string, emoji: string) => {
+    socket.emit('add_reaction', { messageId, emoji });
+  };
+
+  return { messages, sendMessage, addReaction };
 }; 

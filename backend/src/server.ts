@@ -107,6 +107,18 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('add_reaction', async ({ messageId, emoji }) => {
+    try {
+      const userId = socket.data.userId;
+      const message = await messageService.getMessage(messageId);
+      await messageService.addReaction(messageId, emoji, userId);
+      io.to(message.channelId).emit('reaction_added', { messageId, emoji, userId });
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      socket.emit('error', 'Failed to add reaction');
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

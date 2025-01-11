@@ -1,4 +1,4 @@
-import { PutCommand, QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, DeleteCommand, UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb";
 
 const TABLE_NAME = "K_Messages";
@@ -9,6 +9,7 @@ export interface Message {
   userId: string;
   content: string;
   username: string;
+  reactions?: { [key: string]: string[] };
 }
 
 export const messageService = {
@@ -50,5 +51,46 @@ export const messageService = {
     });
 
     await docClient.send(command);
+  },
+
+  async addReaction(messageId: string, emoji: string, userId: string) {
+    const message = await this.getMessage(messageId);
+    if (!message) throw new Error('Message not found');
+
+    const reactions = message.reactions || {};
+    const existingReactions = reactions[emoji] || [];
+    
+    // Toggle reaction
+    const newReactions = existingReactions.includes(userId)
+      ? existingReactions.filter(id => id !== userId)
+      : [...existingReactions, userId];
+
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        messageId,
+        channelId: message.channelId
+      },
+      UpdateExpression: 'SET reactions.#emoji = :users',
+      ExpressionAttributeNames: {
+        '#emoji': emoji
+      },
+      ExpressionAttributeValues: {
+        ':users': newReactions
+      }
+    });
+
+    await docClient.send(command);
+    return { messageId, emoji, reactions: { [emoji]: newReactions } };
+  },
+
+  async getMessage(messageId: string) {
+    const command = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { messageId }
+    });
+
+    const response = await docClient.send(command);
+    return response.Item as Message;
   }
 }; 

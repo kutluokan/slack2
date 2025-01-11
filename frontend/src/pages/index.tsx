@@ -1,9 +1,14 @@
 import Head from 'next/head';
+import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { ChannelsList } from '../components/ChannelsList';
+import { MessageList } from '../components/MessageList';
+import { useMessages } from '../hooks/useMessages';
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
+  const [selectedChannel, setSelectedChannel] = useState({ id: 'general', name: 'general' });
+  const { messages, sendMessage, addReaction } = useMessages(selectedChannel.id);
 
   if (loading) {
     return (
@@ -55,10 +60,14 @@ export default function Home() {
               <div className="mt-2 text-sm text-gray-300">
                 {user.email ?? ''}
               </div>
-              <ChannelsList user={{
-                uid: user.uid,
-                email: user.email
-              }} />
+              <ChannelsList 
+                user={{
+                  uid: user.uid,
+                  email: user.email
+                }} 
+                onChannelSelect={(channel) => setSelectedChannel(channel)}
+                selectedChannelId={selectedChannel.id}
+              />
             </div>
           </div>
 
@@ -66,12 +75,19 @@ export default function Home() {
           <div className="flex-1 flex flex-col">
             {/* Header */}
             <div className="h-16 border-b flex items-center px-6">
-              <h2 className="text-lg font-semibold">#general</h2>
+              <h2 className="text-lg font-semibold">#{selectedChannel.name}</h2>
             </div>
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6">
-              {/* Messages will go here */}
+              <MessageList
+                messages={messages}
+                onReactionAdd={addReaction}
+                onThreadReply={(messageId) => {
+                  // Handle thread reply - you can implement this later
+                  console.log('Thread reply to:', messageId);
+                }}
+              />
             </div>
 
             {/* Message Input */}
@@ -80,6 +96,12 @@ export default function Home() {
                 type="text"
                 placeholder="Type a message..."
                 className="w-full px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                    sendMessage(e.currentTarget.value, user.uid, user.email || 'Anonymous');
+                    e.currentTarget.value = '';
+                  }
+                }}
               />
             </div>
           </div>

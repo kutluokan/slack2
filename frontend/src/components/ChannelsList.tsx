@@ -7,12 +7,16 @@ interface Channel {
   isPrivate: boolean;
 }
 
-type User = {
-  uid: string;
-  email: string | null;
-};
+interface ChannelsListProps {
+  user: {
+    uid: string;
+    email: string | null;
+  };
+  onChannelSelect: (channel: { id: string; name: string }) => void;
+  selectedChannelId: string;
+}
 
-export const ChannelsList = ({ user }: { user: User }) => {
+export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: ChannelsListProps) => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
@@ -97,7 +101,10 @@ export const ChannelsList = ({ user }: { user: User }) => {
         {channels.map((channel) => (
           <li
             key={channel.channelId}
-            className="px-4 py-1 text-gray-300 hover:bg-gray-700 cursor-pointer"
+            onClick={() => onChannelSelect({ id: channel.channelId, name: channel.name })}
+            className={`px-4 py-1 text-gray-300 hover:bg-gray-700 cursor-pointer ${
+              selectedChannelId === channel.channelId ? 'bg-gray-700' : ''
+            }`}
           >
             # {channel.name}
           </li>
