@@ -1,15 +1,48 @@
 import Head from 'next/head';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { ChannelsList } from '../components/ChannelsList';
 import { DirectMessagesList } from '../components/DirectMessagesList';
 import { MessageList } from '../components/MessageList';
 import { useMessages } from '../hooks/useMessages';
+import { AIAvatarList } from '../components/AIAvatarList';
+import { useRouter } from 'next/router';
 
 export default function Home() {
+  const router = useRouter();
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
   const [selectedChannel, setSelectedChannel] = useState({ id: 'general', name: 'general' });
   const { messages, sendMessage, addReaction } = useMessages(selectedChannel.id);
+  const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
+
+  // Handle D-ID script
+  useEffect(() => {
+    if (selectedAIUser) {
+      // Add D-ID script
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = 'https://agent.d-id.com/v1/index.js';
+      script.dataset.name = 'did-agent';
+      script.dataset.mode = 'fabio';
+      script.dataset.clientKey = 'Z29vZ2xlLW9hdXRoMnwxMDU1MTkxNDQ1NDczNjAwODcwMDY6aXN2RkZ0UmJzOXVGOHZQUlUzQk9D';
+      script.dataset.agentId = 'agt_RTXhEo8N';
+      script.dataset.monitor = 'true';
+      document.body.appendChild(script);
+
+      return () => {
+        // Remove D-ID script when component unmounts or user changes
+        document.body.removeChild(script);
+      };
+    }
+  }, [selectedAIUser]);
+
+  const handleChannelChange = (channel: { id: string; name: string }) => {
+    if (selectedAIUser) {
+      // If AI avatar is active, refresh the page with new channel
+      router.reload();
+    }
+    setSelectedChannel(channel);
+  };
 
   if (loading) {
     return (
@@ -66,7 +99,7 @@ export default function Home() {
                   uid: user.uid,
                   email: user.email
                 }} 
-                onChannelSelect={(channel) => setSelectedChannel(channel)}
+                onChannelSelect={handleChannelChange}
                 selectedChannelId={selectedChannel.id}
               />
               <DirectMessagesList
@@ -74,8 +107,16 @@ export default function Home() {
                   uid: user.uid,
                   email: user.email
                 }}
-                onChannelSelect={(channel) => setSelectedChannel(channel)}
+                onChannelSelect={handleChannelChange}
                 selectedChannelId={selectedChannel.id}
+              />
+              <AIAvatarList
+                currentUser={{
+                  uid: user.uid,
+                  email: user.email
+                }}
+                onUserSelect={setSelectedAIUser}
+                selectedUserId={selectedAIUser}
               />
             </div>
           </div>
