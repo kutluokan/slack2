@@ -154,31 +154,46 @@ export default function Home() {
                   <div id="did-host" className="w-full h-full"></div>
                 </div>
               ) : (
-                <>
-                  <MessageList
-                    messages={messages}
-                    onReactionAdd={addReaction}
-                    onThreadReply={(messageId) => {
-                      console.log('Thread reply to:', messageId);
-                    }}
-                  />
-                  {/* Message Input */}
-                  <div className="p-4 border-t">
-                    <input
-                      type="text"
-                      placeholder="Type a message..."
-                      className="w-full px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                          sendMessage(e.currentTarget.value, user.uid, user.email || 'Anonymous');
-                          e.currentTarget.value = '';
-                        }
-                      }}
-                    />
-                  </div>
-                </>
+                <MessageList
+                  messages={messages}
+                  onReactionAdd={addReaction}
+                  onThreadReply={(messageId) => {
+                    console.log('Thread reply to:', messageId);
+                  }}
+                />
               )}
             </div>
+
+            {/* Message Input */}
+            {!isAIAvatarView && (
+              <div className="p-4 border-t bg-white">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    className="flex-1 px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        sendMessage(e.currentTarget.value, user.uid, user.email || 'Anonymous');
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={(e) => {
+                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                      if (input.value.trim()) {
+                        sendMessage(input.value, user.uid, user.email || 'Anonymous');
+                        input.value = '';
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
