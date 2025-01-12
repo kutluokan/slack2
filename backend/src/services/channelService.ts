@@ -12,37 +12,56 @@ export interface Channel {
 
 export const channelService = {
   async createChannel(channel: Omit<Channel, 'channelId' | 'createdAt'>) {
-    const newChannel: Channel = {
-      ...channel,
-      channelId: `channel_${Date.now()}`,
-      createdAt: Date.now(),
-    };
+    try {
+      const newChannel: Channel = {
+        ...channel,
+        channelId: `channel_${Date.now()}`,
+        createdAt: Date.now(),
+      };
 
-    const command = new PutCommand({
-      TableName: TABLE_NAME,
-      Item: newChannel,
-    });
+      const command = new PutCommand({
+        TableName: TABLE_NAME,
+        Item: newChannel,
+      });
 
-    await docClient.send(command);
-    return newChannel;
+      await docClient.send(command);
+      return newChannel;
+    } catch (error) {
+      console.error('Error creating channel:', error);
+      throw error;
+    }
   },
 
   async getChannel(channelId: string) {
-    const command = new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { channelId },
-    });
+    try {
+      const command = new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { channelId },
+      });
 
-    const response = await docClient.send(command);
-    return response.Item as Channel;
+      const response = await docClient.send(command);
+      return response.Item as Channel;
+    } catch (error) {
+      console.error('Error getting channel:', error);
+      throw error;
+    }
   },
 
   async getUserChannels(userId: string) {
-    const command = new ScanCommand({
-      TableName: TABLE_NAME,
-    });
+    try {
+      const command = new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: "createdBy = :userId",
+        ExpressionAttributeValues: {
+          ":userId": userId
+        }
+      });
 
-    const response = await docClient.send(command);
-    return response.Items as Channel[];
+      const response = await docClient.send(command);
+      return response.Items as Channel[];
+    } catch (error) {
+      console.error('Error getting user channels:', error);
+      throw error;
+    }
   }
 }; 

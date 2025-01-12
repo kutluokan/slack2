@@ -90,7 +90,10 @@ io.on('connection', (socket) => {
       socket.emit('channels', channels);
     } catch (error) {
       console.error('Error fetching channels:', error);
-      socket.emit('error', 'Failed to fetch channels');
+      socket.emit('error', {
+        type: 'CHANNELS_ERROR',
+        message: 'Failed to fetch channels. Please try again later.'
+      });
     }
   });
 
