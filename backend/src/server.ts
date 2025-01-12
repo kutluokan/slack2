@@ -133,6 +133,33 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('get_dm_channels', async ({ userId }) => {
+    try {
+      const channels = await channelService.getUserDMChannels(userId);
+      socket.emit('dm_channels', channels);
+    } catch (error) {
+      console.error('Error getting DM channels:', error);
+    }
+  });
+
+  socket.on('create_dm_channel', async ({ user1Id, user2Id }) => {
+    try {
+      const channel = await channelService.createDMChannel(user1Id, user2Id);
+      io.emit('dm_channel_created', channel);
+    } catch (error) {
+      console.error('Error creating DM channel:', error);
+    }
+  });
+
+  socket.on('get_users', async () => {
+    try {
+      const users = await userService.getAllUsers();
+      socket.emit('users', users);
+    } catch (error) {
+      console.error('Error getting users:', error);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

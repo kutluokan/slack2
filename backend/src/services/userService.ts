@@ -1,4 +1,4 @@
-import { PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb";
 
 const TABLE_NAME = "K_Users";
@@ -64,6 +64,20 @@ export const userService = {
     } catch (error) {
       console.error('Error in getUser:', error);
       throw new Error(`Failed to get user: ${(error as Error).message}`);
+    }
+  },
+
+  async getAllUsers() {
+    try {
+      const command = new ScanCommand({
+        TableName: TABLE_NAME,
+      });
+
+      const response = await docClient.send(command);
+      return response.Items as User[];
+    } catch (error) {
+      console.error('Error in getAllUsers:', error);
+      throw new Error(`Failed to get all users: ${(error as Error).message}`);
     }
   },
 }; 

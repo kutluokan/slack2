@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { ChannelsList } from '../components/ChannelsList';
+import { DirectMessagesList } from '../components/DirectMessagesList';
 import { MessageList } from '../components/MessageList';
 import { useMessages } from '../hooks/useMessages';
 
@@ -68,6 +69,14 @@ export default function Home() {
                 onChannelSelect={(channel) => setSelectedChannel(channel)}
                 selectedChannelId={selectedChannel.id}
               />
+              <DirectMessagesList
+                currentUser={{
+                  uid: user.uid,
+                  email: user.email
+                }}
+                onChannelSelect={(channel) => setSelectedChannel(channel)}
+                selectedChannelId={selectedChannel.id}
+              />
             </div>
           </div>
 
@@ -75,7 +84,10 @@ export default function Home() {
           <div className="flex-1 flex flex-col">
             {/* Header */}
             <div className="h-16 border-b flex items-center px-6">
-              <h2 className="text-lg font-semibold">#{selectedChannel.name}</h2>
+              <h2 className="text-lg font-semibold">
+                {selectedChannel.name.startsWith('dm_') ? '@' : '#'}
+                {selectedChannel.name}
+              </h2>
             </div>
 
             {/* Messages Area */}

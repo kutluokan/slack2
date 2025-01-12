@@ -8,6 +8,8 @@ export interface Channel {
   name: string;
   createdBy: string;
   createdAt: number;
+  isDM?: boolean;
+  participants?: string[];  // For DM channels, this will contain the two user IDs
 }
 
 export const channelService = {
@@ -51,13 +53,69 @@ export const channelService = {
   async getAllChannels() {
     try {
       const command = new ScanCommand({
-        TableName: TABLE_NAME
+        TableName: TABLE_NAME,
+        FilterExpression: 'attribute_not_exists(isDM) OR isDM = :isDM',
+        ExpressionAttributeValues: {
+          ':isDM': false
+        }
       });
 
       const response = await docClient.send(command);
       return response.Items as Channel[];
     } catch (error) {
       console.error('Error getting all channels:', error);
+      throw error;
+    }
+  },
+
+  async createDMChannel(user1Id: string, user2Id: string) {
+    try {
+      const participants = [user1Id, user2Id].sort(); // Sort to ensure consistent channel IDs
+      const channelId = `dm_${participants.join('_')}`;
+      
+      // Check if DM channel already exists
+      const existingChannel = await this.getChannel(channelId);
+      if (existingChannel) {
+        return existingChannel;
+      }
+
+      const newChannel: Channel = {
+        channelId,
+        name: `dm_${participants[0]}_${participants[1]}`,
+        createdBy: user1Id,
+        createdAt: Date.now(),
+        isDM: true,
+        participants,
+      };
+
+      const command = new PutCommand({
+        TableName: TABLE_NAME,
+        Item: newChannel,
+      });
+
+      await docClient.send(command);
+      return newChannel;
+    } catch (error) {
+      console.error('Error creating DM channel:', error);
+      throw error;
+    }
+  },
+
+  async getUserDMChannels(userId: string) {
+    try {
+      const command = new ScanCommand({
+        TableName: TABLE_NAME,
+        FilterExpression: 'isDM = :isDM AND contains(participants, :userId)',
+        ExpressionAttributeValues: {
+          ':isDM': true,
+          ':userId': userId,
+        },
+      });
+
+      const response = await docClient.send(command);
+      return response.Items as Channel[];
+    } catch (error) {
+      console.error('Error getting user DM channels:', error);
       throw error;
     }
   }
