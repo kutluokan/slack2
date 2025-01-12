@@ -6,18 +6,26 @@ import { DirectMessagesList } from '../components/DirectMessagesList';
 import { MessageList } from '../components/MessageList';
 import { useMessages } from '../hooks/useMessages';
 import { AIAvatarList } from '../components/AIAvatarList';
-import { useRouter } from 'next/router';
 
 export default function Home() {
-  const router = useRouter();
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
-  const [selectedChannel, setSelectedChannel] = useState({ id: 'general', name: 'general' });
+  const [selectedChannel, setSelectedChannel] = useState(() => {
+    // Try to get the channel from localStorage on initial load
+    if (typeof window !== 'undefined') {
+      const savedChannel = localStorage.getItem('selectedChannel');
+      if (savedChannel) {
+        return JSON.parse(savedChannel);
+      }
+    }
+    return { id: 'general', name: 'general' };
+  });
   const { messages, sendMessage, addReaction } = useMessages(selectedChannel.id);
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
+  const [isAIAvatarView, setIsAIAvatarView] = useState(false);
 
   // Handle D-ID script
   useEffect(() => {
-    if (selectedAIUser) {
+    if (selectedAIUser && isAIAvatarView) {
       // Add D-ID script
       const script = document.createElement('script');
       script.type = 'module';
@@ -34,14 +42,23 @@ export default function Home() {
         document.body.removeChild(script);
       };
     }
-  }, [selectedAIUser]);
+  }, [selectedAIUser, isAIAvatarView]);
 
   const handleChannelChange = (channel: { id: string; name: string }) => {
-    if (selectedAIUser) {
-      // If AI avatar is active, refresh the page with new channel
-      router.reload();
+    if (isAIAvatarView) {
+      // If we're switching from AI avatar view, store channel and refresh
+      localStorage.setItem('selectedChannel', JSON.stringify(channel));
+      window.location.reload();
+    } else {
+      // Normal channel switch, just update state
+      setSelectedChannel(channel);
+      setIsAIAvatarView(false);
     }
-    setSelectedChannel(channel);
+  };
+
+  const handleAIAvatarSelect = (userId: string) => {
+    setSelectedAIUser(userId);
+    setIsAIAvatarView(true);
   };
 
   if (loading) {
@@ -115,7 +132,7 @@ export default function Home() {
                   uid: user.uid,
                   email: user.email
                 }}
-                onUserSelect={setSelectedAIUser}
+                onUserSelect={handleAIAvatarSelect}
                 selectedUserId={selectedAIUser}
               />
             </div>
@@ -126,36 +143,41 @@ export default function Home() {
             {/* Header */}
             <div className="h-16 border-b flex items-center px-6">
               <h2 className="text-lg font-semibold">
-                {selectedChannel.name.startsWith('dm_') ? '@' : '#'}
-                {selectedChannel.name}
+                {isAIAvatarView ? 'Kay\'s AI Avatar' : `${selectedChannel.name.startsWith('dm_') ? '@' : '#'}${selectedChannel.name}`}
               </h2>
             </div>
 
-            {/* Messages Area */}
+            {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-6">
-              <MessageList
-                messages={messages}
-                onReactionAdd={addReaction}
-                onThreadReply={(messageId) => {
-                  // Handle thread reply - you can implement this later
-                  console.log('Thread reply to:', messageId);
-                }}
-              />
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                className="w-full px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                    sendMessage(e.currentTarget.value, user.uid, user.email || 'Anonymous');
-                    e.currentTarget.value = '';
-                  }
-                }}
-              />
+              {isAIAvatarView ? (
+                <div className="flex items-center justify-center h-full">
+                  <div id="did-host" className="w-full h-full"></div>
+                </div>
+              ) : (
+                <>
+                  <MessageList
+                    messages={messages}
+                    onReactionAdd={addReaction}
+                    onThreadReply={(messageId) => {
+                      console.log('Thread reply to:', messageId);
+                    }}
+                  />
+                  {/* Message Input */}
+                  <div className="p-4 border-t">
+                    <input
+                      type="text"
+                      placeholder="Type a message..."
+                      className="w-full px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          sendMessage(e.currentTarget.value, user.uid, user.email || 'Anonymous');
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
