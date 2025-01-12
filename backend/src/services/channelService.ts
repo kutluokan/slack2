@@ -47,20 +47,17 @@ export const channelService = {
     }
   },
 
-  async getUserChannels(userId: string) {
+
+  async getAllChannels() {
     try {
       const command = new ScanCommand({
-        TableName: TABLE_NAME,
-        FilterExpression: "createdBy = :userId",
-        ExpressionAttributeValues: {
-          ":userId": userId
-        }
+        TableName: TABLE_NAME
       });
 
       const response = await docClient.send(command);
       return response.Items as Channel[];
     } catch (error) {
-      console.error('Error getting user channels:', error);
+      console.error('Error getting all channels:', error);
       throw error;
     }
   }

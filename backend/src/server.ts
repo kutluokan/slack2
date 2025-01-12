@@ -86,7 +86,7 @@ io.on('connection', (socket) => {
 
   socket.on('get_channels', async () => {
     try {
-      const channels = await channelService.getUserChannels(socket.data.userId);
+      const channels = await channelService.getAllChannels();
       socket.emit('channels', channels);
     } catch (error) {
       console.error('Error fetching channels:', error);
