@@ -128,12 +128,7 @@ export default function Home() {
                 selectedChannelId={selectedChannel.id}
               />
               <AIAvatarList
-                currentUser={{
-                  uid: user.uid,
-                  email: user.email
-                }}
                 onUserSelect={handleAIAvatarSelect}
-                selectedUserId={selectedAIUser}
               />
             </div>
           </div>
@@ -143,15 +138,18 @@ export default function Home() {
             {/* Header */}
             <div className="h-16 border-b flex items-center px-6">
               <h2 className="text-lg font-semibold">
-                {isAIAvatarView ? 'Kay\'s AI Avatar' : `${selectedChannel.name.startsWith('dm_') ? '@' : '#'}${selectedChannel.name}`}
+                {isAIAvatarView ? "Kay's AI Avatar" : `${selectedChannel.name.startsWith('dm_') ? '@' : '#'}${selectedChannel.name}`}
               </h2>
             </div>
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-6">
               {isAIAvatarView ? (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center justify-center h-full">
                   <div id="did-host" className="w-full h-full"></div>
+                  <div className="text-center mt-4 text-gray-600">
+                    Welcome to Kay&apos;s AI Avatar! This is a dedicated space for interacting with the D-ID powered AI avatar.
+                  </div>
                 </div>
               ) : (
                 <MessageList
