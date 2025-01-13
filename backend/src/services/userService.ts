@@ -6,7 +6,7 @@ const TABLE_NAME = "K_Users";
 export interface User {
   userId: string;
   email: string;
-  displayName?: string;
+  displayName: string;
   photoURL?: string;
   createdAt: number;
   lastLogin: number;
@@ -34,6 +34,7 @@ export const userService = {
       
       const user: User = {
         ...userData,
+        displayName: userData.displayName || userData.email.split('@')[0] || 'Anonymous',
         createdAt: existingUser ? existingUser.createdAt : now,
         lastLogin: now,
       };

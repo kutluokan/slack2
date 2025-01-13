@@ -31,7 +31,7 @@ export const useAuth = () => {
       socket.emit('sync_user', {
         userId: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Anonymous',
         photoURL: firebaseUser.photoURL,
       });
     });

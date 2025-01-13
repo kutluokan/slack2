@@ -72,7 +72,7 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
   const getChannelDisplayName = (channel: Channel) => {
     const otherUserId = channel.participants.find(id => id !== currentUser.uid);
     const otherUser = users.find(user => user.userId === otherUserId);
-    return otherUser?.displayName || otherUser?.email || 'Unknown User';
+    return otherUser?.email || 'Unknown User';
   };
 
   return (
