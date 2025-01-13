@@ -1,0 +1,71 @@
+aws dynamodb describe-table --table-name K_Messages
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "channelId",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "messageId",    
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "K_Messages",
+        "KeySchema": [
+            {
+                "AttributeName": "messageId",   
+                "KeyType": "HASH"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2025-01-12T20:58:01.017000-06:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,        
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 0,
+        "ItemCount": 0,
+        "TableArn": "arn:aws:dynamodb:us-east-2:474668398195:table/K_Messages",
+        "TableId": "5c1de195-9cf9-4eff-8bfb-149066d118d4",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",   
+            "LastUpdateToPayPerRequestDateTime": "2025-01-12T20:58:01.017000-06:00"
+        },
+        "GlobalSecondaryIndexes": [
+            {
+                "IndexName": "ChannelIndex",    
+                "KeySchema": [
+                    {
+                        "AttributeName": "channelId",
+                        "KeyType": "HASH"       
+                    }
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL"     
+                },
+                "IndexStatus": "ACTIVE",        
+                "ProvisionedThroughput": {      
+                    "NumberOfDecreasesToday": 0,
+                    "ReadCapacityUnits": 0,     
+                    "WriteCapacityUnits": 0     
+                },
+                "IndexSizeBytes": 0,
+                "ItemCount": 0,
+                "IndexArn": "arn:aws:dynamodb:us-east-2:474668398195:table/K_Messages/index/ChannelIndex",
+                "WarmThroughput": {
+                    "ReadUnitsPerSecond": 12000,
+                    "WriteUnitsPerSecond": 4000,
+                    "Status": "ACTIVE"
+                }
+            }
+        ],
+        "DeletionProtectionEnabled": false,     
+        "WarmThroughput": {
+            "ReadUnitsPerSecond": 12000,        
+            "WriteUnitsPerSecond": 4000,        
+            "Status": "ACTIVE"
+        }
+    }
+}

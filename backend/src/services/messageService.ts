@@ -29,6 +29,7 @@ export const messageService = {
   async getChannelMessages(channelId: string) {
     const command = new QueryCommand({
       TableName: TABLE_NAME,
+      IndexName: "ChannelIndex",
       KeyConditionExpression: "channelId = :channelId",
       ExpressionAttributeValues: {
         ":channelId": channelId,
