@@ -174,7 +174,7 @@ export default function Home() {
                     className="flex-1 px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        sendMessage(e.currentTarget.value, user.uid, user.email || 'Anonymous');
+                        sendMessage(e.currentTarget.value, user.uid, user.displayName || user.email || 'Anonymous');
                         e.currentTarget.value = '';
                       }
                     }}
@@ -183,7 +183,7 @@ export default function Home() {
                     onClick={(e) => {
                       const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                       if (input.value.trim()) {
-                        sendMessage(input.value, user.uid, user.email || 'Anonymous');
+                        sendMessage(input.value, user.uid, user.displayName || user.email || 'Anonymous');
                         input.value = '';
                       }
                     }}
