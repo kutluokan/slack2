@@ -4,6 +4,9 @@ interface CustomSocket extends ReturnType<typeof io> {
   auth?: {
     userId: string;
   };
+  data?: {
+    userId: string;
+  };
 }
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
@@ -21,6 +24,7 @@ export const connectSocket = (userId: string) => {
   if (!userId) return;
   
   socket.auth = { userId };
+  socket.data = { userId };
   
   if (!socket.connected) {
     socket.connect();
@@ -28,6 +32,7 @@ export const connectSocket = (userId: string) => {
   
   socket.on('connect', () => {
     console.log('Socket connected, syncing user data...');
+    socket.emit('sync_user', { userId });
   });
 
   socket.on('connect_error', (err: Error) => {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { Message } from './Message';
 
 interface MessageListProps {
@@ -15,9 +15,15 @@ interface MessageListProps {
 }
 
 export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageListProps) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
+
   const groupedMessages = useMemo(() => {
-    return messages.reduce((acc, message, index) => {
-      const prevMessage = messages[index - 1];
+    // Sort messages by timestamp to ensure newest is at bottom
+    const sortedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
+    return sortedMessages.reduce((acc, message, index) => {
+      const prevMessage = sortedMessages[index - 1];
       const isGrouped = prevMessage && 
         prevMessage.userId === message.userId &&
         message.timestamp - prevMessage.timestamp < 300000; // 5 minutes
@@ -26,8 +32,43 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageL
     }, [] as Array<typeof messages[0] & { isGrouped?: boolean }>);
   }, [messages]);
 
+  // Initial scroll to bottom when component mounts
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView();
+    }
+  }, []);
+
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (!userHasScrolled && messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+
+    scrollToBottom();
+  }, [messages, userHasScrolled]);
+
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
+    
+    if (!isAtBottom) {
+      setUserHasScrolled(true);
+    } else {
+      setUserHasScrolled(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col space-y-1">
+    <div 
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="flex flex-col space-y-1 overflow-y-auto h-full"
+    >
       {groupedMessages.map((message) => (
         <Message
           key={message.messageId}
@@ -37,6 +78,7 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageL
           onThreadReply={onThreadReply}
         />
       ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 }; 

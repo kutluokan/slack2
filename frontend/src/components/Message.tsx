@@ -41,7 +41,6 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply }: Me
       )}
       
       <div className="flex items-start">
-        {isGrouped && <div className="w-10" />}
         <div className="flex-1">
           <p className="text-sm">{message.content}</p>
           

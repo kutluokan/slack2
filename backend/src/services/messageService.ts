@@ -4,6 +4,7 @@ import { docClient } from "../config/dynamodb";
 const TABLE_NAME = "K_Messages";
 
 export interface Message {
+  messageId: string;
   channelId: string;
   timestamp: number;
   userId: string;
@@ -14,16 +15,22 @@ export interface Message {
 
 export const messageService = {
   async createMessage(message: Message) {
+    const messageId = `${message.channelId}#${message.timestamp}`;
     const command = new PutCommand({
       TableName: TABLE_NAME,
       Item: {
-        ...message,
-        messageId: `${message.channelId}#${message.timestamp}`,
+        messageId,
+        channelId: message.channelId,
+        timestamp: message.timestamp,
+        userId: message.userId,
+        content: message.content,
+        username: message.username,
+        reactions: {}
       },
     });
 
     await docClient.send(command);
-    return message;
+    return { ...message, messageId };
   },
 
   async getChannelMessages(channelId: string) {
@@ -42,12 +49,11 @@ export const messageService = {
     return response.Items as Message[];
   },
 
-  async deleteMessage(channelId: string, timestamp: number) {
+  async deleteMessage(messageId: string) {
     const command = new DeleteCommand({
       TableName: TABLE_NAME,
       Key: {
-        channelId,
-        timestamp,
+        messageId
       },
     });
 
@@ -59,23 +65,20 @@ export const messageService = {
       throw new Error('Missing required reaction parameters');
     }
 
-    const [channelId, timestamp] = messageId.split('#');
-    
-    if (!channelId || !timestamp) {
-      throw new Error('Invalid message ID format');
-    }
-
-    // First get the current message to check existing reactions
+    // Get the current message
     const getMessage = new GetCommand({
       TableName: TABLE_NAME,
       Key: {
-        channelId,
-        timestamp: parseInt(timestamp)
+        messageId
       }
     });
 
     const currentMessage = await docClient.send(getMessage);
-    const currentReactions = currentMessage.Item?.reactions || {};
+    if (!currentMessage.Item) {
+      throw new Error('Message not found');
+    }
+
+    const currentReactions = currentMessage.Item.reactions || {};
     
     // Update or create the reaction array for this emoji
     const updatedReactions = {
@@ -88,8 +91,7 @@ export const messageService = {
     const command = new UpdateCommand({
       TableName: TABLE_NAME,
       Key: {
-        channelId,
-        timestamp: parseInt(timestamp)
+        messageId
       },
       UpdateExpression: 'SET reactions = :reactions',
       ExpressionAttributeValues: {
@@ -107,13 +109,10 @@ export const messageService = {
   },
 
   async getMessage(messageId: string) {
-    const [channelId, timestamp] = messageId.split('#');
-    
     const command = new GetCommand({
       TableName: TABLE_NAME,
       Key: {
-        channelId,
-        timestamp: parseInt(timestamp)
+        messageId
       }
     });
 

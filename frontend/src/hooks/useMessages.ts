@@ -65,7 +65,15 @@ export const useMessages = (channelId: string) => {
   };
 
   const addReaction = (messageId: string, emoji: string) => {
-    socket.emit('add_reaction', { messageId, emoji });
+    if (!socket.auth?.userId) {
+      console.error('User not authenticated');
+      return;
+    }
+    socket.emit('add_reaction', { 
+      messageId, 
+      emoji,
+      userId: socket.auth.userId 
+    });
   };
 
   return { messages, sendMessage, addReaction };
