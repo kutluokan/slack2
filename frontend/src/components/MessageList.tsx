@@ -18,6 +18,7 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageL
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const groupedMessages = useMemo(() => {
     // Sort messages by timestamp to ensure newest is at bottom
@@ -32,12 +33,15 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageL
     }, [] as Array<typeof messages[0] & { isGrouped?: boolean }>);
   }, [messages]);
 
-  // Initial scroll to bottom when component mounts
+  // Initial scroll to bottom when messages are first loaded
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView();
+    if (isFirstLoad && messages.length > 0) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView();
+      }
+      setIsFirstLoad(false);
     }
-  }, []);
+  }, [messages, isFirstLoad]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -53,7 +57,7 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageL
   const handleScroll = () => {
     if (!containerRef.current) return;
     
-    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const { scrollHeight, clientHeight, scrollTop } = containerRef.current;
     const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
     
     if (!isAtBottom) {
