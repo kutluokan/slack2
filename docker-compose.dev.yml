@@ -30,3 +30,41 @@ services:
       - PORT=4000
       - FRONTEND_URL=http://localhost:3000
       - NODE_ENV=development
+
+  upload_service:
+    build:
+      context: ./rag
+      args:
+        INSTALL_JUPYTER: false
+    env_file:
+      - ./rag/.env
+    volumes:
+      - ./rag:/app
+    command: python upload.py
+
+  rag_app:
+    build:
+      context: ./rag
+      args:
+        INSTALL_JUPYTER: false
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./rag/.env
+    volumes:
+      - ./rag:/app
+    command: python main.py
+    restart: always
+
+  jupyter:
+    build:
+      context: ./rag
+      args:
+        INSTALL_JUPYTER: true
+    ports:
+      - "8888:8888"
+    env_file:
+      - ./rag/.env
+    volumes:
+      - ./rag:/app
+    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
