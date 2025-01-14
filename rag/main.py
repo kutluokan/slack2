@@ -24,6 +24,8 @@ app = FastAPI()
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 document_vectorstore = PineconeVectorStore(index_name=PINECONE_INDEX, embedding=embeddings)
 retriever = document_vectorstore.as_retriever()
+
+# DO NOT CHANGE THE MODEL NAME. IT MUST BE gpt-4o-mini.
 llm = ChatOpenAI(temperature=0.7, model_name="gpt-4o-mini")
 
 class Message(BaseModel):
