@@ -1,5 +1,6 @@
 import { PutCommand, ScanCommand, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb";
+import { messageService } from "./messageService";
 
 const TABLE_NAME = "K_Channels";
 
@@ -116,6 +117,29 @@ export const channelService = {
       return response.Items as Channel[];
     } catch (error) {
       console.error('Error getting user DM channels:', error);
+      throw error;
+    }
+  },
+
+  async deleteChannel(channelId: string) {
+    try {
+      // Delete the channel
+      const deleteCommand = new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { channelId },
+      });
+
+      await docClient.send(deleteCommand);
+
+      // Delete all messages in the channel
+      const messages = await messageService.getChannelMessages(channelId);
+      for (const message of messages) {
+        await messageService.deleteMessage(message.messageId);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting channel:', error);
       throw error;
     }
   }

@@ -11,11 +11,17 @@ import { MessageInput } from '../components/MessageInput';
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
   const [selectedChannel, setSelectedChannel] = useState(() => {
-    // Try to get the channel from localStorage on initial load
     if (typeof window !== 'undefined') {
       const savedChannel = localStorage.getItem('selectedChannel');
-      if (savedChannel) {
-        return JSON.parse(savedChannel);
+      try {
+        if (savedChannel) {
+          const parsed = JSON.parse(savedChannel);
+          if (parsed && parsed.id && parsed.name) {
+            return parsed;
+          }
+        }
+      } catch (e) {
+        localStorage.removeItem('selectedChannel');
       }
     }
     return { id: 'general', name: 'general' };
@@ -23,6 +29,14 @@ export default function Home() {
   const { messages, sendMessage, addReaction } = useMessages(selectedChannel.id);
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
   const [isAIAvatarView, setIsAIAvatarView] = useState(false);
+
+  useEffect(() => {
+    if (!selectedChannel) {
+      const defaultChannel = { id: 'general', name: 'general' };
+      setSelectedChannel(defaultChannel);
+      localStorage.setItem('selectedChannel', JSON.stringify(defaultChannel));
+    }
+  }, [selectedChannel]);
 
   // Handle D-ID script
   useEffect(() => {
@@ -45,14 +59,21 @@ export default function Home() {
     }
   }, [selectedAIUser, isAIAvatarView]);
 
-  const handleChannelChange = (channel: { id: string; name: string }) => {
+  const handleChannelChange = (channel: { id: string; name: string } | null) => {
+    if (!channel) {
+      const defaultChannel = { id: 'general', name: 'general' };
+      setSelectedChannel(defaultChannel);
+      localStorage.setItem('selectedChannel', JSON.stringify(defaultChannel));
+      setIsAIAvatarView(false);
+      return;
+    }
+
     if (isAIAvatarView) {
-      // If we're switching from AI avatar view, store channel and refresh
       localStorage.setItem('selectedChannel', JSON.stringify(channel));
       window.location.reload();
     } else {
-      // Normal channel switch, just update state
       setSelectedChannel(channel);
+      localStorage.setItem('selectedChannel', JSON.stringify(channel));
       setIsAIAvatarView(false);
     }
   };

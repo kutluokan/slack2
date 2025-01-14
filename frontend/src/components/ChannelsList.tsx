@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { socket, connectSocket } from '../config/socket';
+import { FaTrash } from 'react-icons/fa';
 
 interface Channel {
   channelId: string;
@@ -41,9 +42,17 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
         setChannels(prev => [...prev, newChannel]);
       };
 
+      const handleChannelDeleted = (deletedChannelId: string) => {
+        setChannels(prev => prev.filter(channel => channel.channelId !== deletedChannelId));
+        if (selectedChannelId === deletedChannelId) {
+          onChannelSelect(null); // Reset selected channel if it was deleted
+        }
+      };
+
       // Listen for events
       socket.on('channels', handleChannels);
       socket.on('channel_created', handleChannelCreated);
+      socket.on('channel_deleted', handleChannelDeleted);
       
       // Handle reconnection
       socket.on('connect', () => {
@@ -54,9 +63,10 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
         socket.off('channels', handleChannels);
         socket.off('channel_created', handleChannelCreated);
         socket.off('connect');
+        socket.off('channel_deleted', handleChannelDeleted);
       };
     }
-  }, [user?.uid]);
+  }, [user?.uid, selectedChannelId, onChannelSelect]);
 
   const createChannel = async () => {
     if (!newChannelName.trim()) return;
@@ -74,13 +84,20 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
     }
   };
 
+  const handleDeleteChannel = (channelId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this channel? This action cannot be undone.')) {
+      socket.emit('delete_channel', channelId);
+    }
+  };
+
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between px-4 mb-2">
-        <h2 className="text-lg font-semibold text-gray-300">Channels</h2>
+      <div className="flex justify-between items-center mb-2 px-2">
+        <h2 className="text-lg font-semibold">Channels</h2>
         <button
           onClick={() => setIsCreating(true)}
-          className="text-gray-400 hover:text-white"
+          className="text-sm bg-gray-700 px-2 py-1 rounded hover:bg-gray-600"
         >
           +
         </button>
@@ -116,12 +133,23 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
         {channels.map((channel) => (
           <li
             key={channel.channelId}
+            className={`
+              relative px-2 py-1 rounded cursor-pointer
+              ${selectedChannelId === channel.channelId ? 'bg-gray-700' : ''}
+              group hover:bg-gray-700
+            `}
             onClick={() => onChannelSelect({ id: channel.channelId, name: channel.name })}
-            className={`px-4 py-1 text-gray-300 hover:bg-gray-700 cursor-pointer ${
-              selectedChannelId === channel.channelId ? 'bg-gray-700' : ''
-            }`}
           >
-            # {channel.name}
+            <div className="flex items-center justify-between w-full">
+              <span className="flex-grow"># {channel.name}</span>
+              <button
+                onClick={(e) => handleDeleteChannel(channel.channelId, e)}
+                className="hidden group-hover:block text-red-500 hover:text-red-400"
+                title="Delete channel"
+              >
+                <FaTrash size={12} />
+              </button>
+            </div>
           </li>
         ))}
       </ul>

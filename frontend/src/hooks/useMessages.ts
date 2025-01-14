@@ -23,34 +23,39 @@ export const useMessages = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    socket.emit('join_channel', channelId);
-    socket.emit('get_messages', channelId);
+    if (channelId) {
+      socket.emit('join_channel', channelId);
+      socket.emit('get_messages', channelId);
 
-    socket.on('messages', (channelMessages: Message[]) => {
-      setMessages(channelMessages);
-    });
+      socket.on('messages', (channelMessages: Message[]) => {
+        setMessages(channelMessages);
+      });
 
-    socket.on('message', (newMessage: Message) => {
-      setMessages(prev => [...prev, newMessage]);
-    });
+      socket.on('message', (newMessage: Message) => {
+        setMessages(prev => [...prev, newMessage]);
+      });
 
-    socket.on('reaction_added', ({ messageId, reactions }: Pick<ReactionPayload, 'messageId' | 'reactions'>) => {
-      setMessages(prev => prev.map(msg => {
-        if (msg.messageId === messageId) {
-          return {
-            ...msg,
-            reactions: reactions
-          };
-        }
-        return msg;
-      }));
-    });
+      socket.on('reaction_added', ({ messageId, reactions }: Pick<ReactionPayload, 'messageId' | 'reactions'>) => {
+        setMessages(prev => prev.map(msg => {
+          if (msg.messageId === messageId) {
+            return {
+              ...msg,
+              reactions: reactions
+            };
+          }
+          return msg;
+        }));
+      });
 
-    return () => {
-      socket.off('messages');
-      socket.off('message');
-      socket.off('reaction_added');
-    };
+      return () => {
+        socket.off('messages');
+        socket.off('message');
+        socket.off('reaction_added');
+        socket.emit('leave_channel', channelId);
+      };
+    } else {
+      setMessages([]);
+    }
   }, [channelId]);
 
   const sendMessage = (content: string, userId: string, username: string, parentMessageId?: string) => {

@@ -187,6 +187,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('delete_channel', async (channelId: string) => {
+    try {
+      await channelService.deleteChannel(channelId);
+      io.emit('channel_deleted', channelId); // Broadcast to all clients
+    } catch (error) {
+      console.error('Error deleting channel:', error);
+      socket.emit('error', 'Failed to delete channel');
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
