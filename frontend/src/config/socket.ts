@@ -33,7 +33,7 @@ export const connectSocket = (userId: string) => {
     socket.connect();
   }
 
-  socket.on('connect_error', (error) => {
+  socket.on('connect_error', (error: Error) => {
     console.error('Socket connection error:', error);
     setTimeout(() => {
       socket.connect();
