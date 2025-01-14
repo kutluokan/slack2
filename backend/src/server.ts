@@ -11,28 +11,33 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://frontend:3000',
+  'http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com',
+  'https://ec2-18-222-164-243.us-east-2.compute.amazonaws.com'
+];
+
 const io = new Server(httpServer, {
+  path: '/socket.io/',
   cors: {
-    origin: [
-      'http://localhost:3000',
-      'http://frontend:3000',
-      'http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com'
-    ],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    transports: ['websocket', 'polling']
-  }
+    allowedHeaders: ['Content-Type', 'Authorization']
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Middleware
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://frontend:3000',
-    'http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com'
-  ],
-  credentials: true
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 

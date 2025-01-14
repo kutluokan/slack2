@@ -9,15 +9,18 @@ interface CustomSocket extends ReturnType<typeof io> {
   };
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
+const SOCKET_URL = typeof window !== 'undefined' 
+  ? window.location.origin.replace(/^http/, 'ws')
+  : 'ws://localhost:4000';
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionAttempts: Infinity,
-  timeout: 10000,
-  transports: ['websocket', 'polling']
+  timeout: 20000,
+  transports: ['websocket', 'polling'],
+  path: '/socket.io/'
 }) as CustomSocket;
 
 export const connectSocket = (userId: string) => {
@@ -29,25 +32,11 @@ export const connectSocket = (userId: string) => {
   if (!socket.connected) {
     socket.connect();
   }
-  
-  socket.on('connect', () => {
-    console.log('Socket connected, syncing user data...');
-    socket.emit('sync_user', { userId });
-  });
 
-  socket.on('connect_error', (err: Error) => {
-    console.error('Socket connection error:', err);
+  socket.on('connect_error', (error) => {
+    console.error('Socket connection error:', error);
     setTimeout(() => {
-      if (!socket.connected) {
-        socket.connect();
-      }
-    }, 2000);
-  });
-
-  socket.on('disconnect', (reason: string) => {
-    console.log('Socket disconnected:', reason);
-    if (reason === 'io server disconnect') {
       socket.connect();
-    }
+    }, 1000);
   });
 }; 
