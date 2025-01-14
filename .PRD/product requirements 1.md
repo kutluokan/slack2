@@ -1,4 +1,4 @@
-# Slack2: smarter workplace communication with AI
+# Chat Genius AI: smarter workplace communication with AI
 
 # Background and context
 
@@ -6,7 +6,7 @@ Chat apps, such as Slack, are a foundational element of the modern workplace. If
 
 But chat apps aren’t perfect \- written text lacks the nuance of the voice and facial expressions. Chatting can be less engaging, or even less accurate, with people missing key pieces of information.
 
-Slack2 tackles this by applying generative AI, not to replace humans but to augment them. It gives the user a professional digital twin, an AI avatar that can represent them but still have a personal touch.
+Chat Genius AI tackles this by applying generative AI, not to replace humans but to augment them. It gives the user a professional digital twin, an AI avatar that can represent them but still have a personal touch.
 
 ### Submission Guidelines
 
@@ -25,7 +25,7 @@ Some topics and techniques have not yet been covered in class, but you are not p
 
 For a baseline reference app, consider Slack \- it is the dominant tool in this space, providing excellent UX and integration with a rich ecosystem.
 
-For the purposes of developing Slack2, here are the core features you should target:
+For the purposes of developing Chat Genius AI, here are the core features you should target:
 
 1. Authentication  
 2. Real-time messaging  

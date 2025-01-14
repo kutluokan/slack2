@@ -95,7 +95,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md">
-          <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Slack2</h1>
+          <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Chat Genius AI</h1>
           {error && <div className="text-red-500 mb-4">{error}</div>}
           <button
             onClick={signInWithGoogle}
@@ -111,8 +111,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Head>
-        <title>Slack2</title>
-        <meta name="description" content="Slack2 - AI-powered chat application" />
+        <title>Chat Genius AI</title>
+        <meta name="description" content="Chat Genius AI - AI-powered chat application" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -122,7 +122,7 @@ export default function Home() {
           <div className="w-64 bg-gray-800 text-white">
             <div className="p-4">
               <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold">Slack2</h1>
+                <h1 className="text-xl font-bold">Chat Genius AI</h1>
                 <button
                   onClick={logout}
                   className="text-sm bg-red-500 px-2 py-1 rounded hover:bg-red-600 transition-colors"

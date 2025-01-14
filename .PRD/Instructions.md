@@ -1,5 +1,5 @@
-# Slack2 Product Requirements Document
-I want to create an AI messaging app called Slack2. It will be a Slack clone with AI features. It will have all the features specified in the product requirements files.
+# Chat Genius AI Product Requirements Document
+I want to create an AI messaging app called Chat Genius AI. It will be a Slack clone with AI features. It will have all the features specified in the product requirements files.
 
 The features (in order of implementation) are:
 1. Realtime messaging

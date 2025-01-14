@@ -14,7 +14,7 @@ interface ChannelsListProps {
     uid: string;
     email: string | null;
   };
-  onChannelSelect: (channel: { id: string; name: string }) => void;
+  onChannelSelect: (channel: { id: string; name: string; } | null) => void;
   selectedChannelId: string;
 }
 
