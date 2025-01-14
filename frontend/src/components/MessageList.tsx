@@ -12,9 +12,10 @@ interface MessageListProps {
   }>;
   onReactionAdd: (messageId: string, emoji: string) => void;
   onThreadReply: (messageId: string) => void;
+  onDelete: (messageId: string) => void;
 }
 
-export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageListProps) => {
+export const MessageList = ({ messages, onReactionAdd, onThreadReply, onDelete }: MessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
@@ -80,6 +81,7 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply }: MessageL
           isGrouped={message.isGrouped}
           onReactionAdd={onReactionAdd}
           onThreadReply={onThreadReply}
+          onDelete={onDelete}
         />
       ))}
       <div ref={messagesEndRef} />

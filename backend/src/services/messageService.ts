@@ -57,10 +57,11 @@ export const messageService = {
       TableName: TABLE_NAME,
       Key: {
         messageId
-      },
+      }
     });
 
     await docClient.send(command);
+    return { messageId };
   },
 
   async addReaction(messageId: string, emoji: string, userId: string) {

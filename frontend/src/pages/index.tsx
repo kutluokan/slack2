@@ -26,7 +26,7 @@ export default function Home() {
     }
     return { id: 'general', name: 'general' };
   });
-  const { messages, sendMessage, addReaction } = useMessages(selectedChannel.id);
+  const { messages, sendMessage, addReaction, deleteMessage } = useMessages(selectedChannel.id);
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
   const [isAIAvatarView, setIsAIAvatarView] = useState(false);
 
@@ -180,6 +180,7 @@ export default function Home() {
                   onThreadReply={(messageId) => {
                     console.log('Thread reply to:', messageId);
                   }}
+                  onDelete={deleteMessage}
                 />
               )}
             </div>

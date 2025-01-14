@@ -150,6 +150,21 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('delete_message', async ({ messageId }) => {
+    try {
+      const [channelId] = messageId.split('#');
+      if (!channelId) {
+        throw new Error('Invalid message ID format');
+      }
+
+      await messageService.deleteMessage(messageId);
+      io.to(channelId).emit('message_deleted', messageId);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      socket.emit('error', 'Failed to delete message');
+    }
+  });
+
   socket.on('get_dm_channels', async ({ userId }) => {
     try {
       const channels = await channelService.getUserDMChannels(userId);

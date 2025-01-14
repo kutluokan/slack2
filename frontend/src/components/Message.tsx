@@ -1,20 +1,16 @@
 import { useState } from 'react';
+import { FaTrash } from 'react-icons/fa';
+import type { Message as MessageType } from '../hooks/useMessages';
 
 interface MessageProps {
-  message: {
-    messageId: string;
-    content: string;
-    userId: string;
-    username: string;
-    timestamp: number;
-    reactions?: { [key: string]: string[] }; // emoji: userId[]
-  };
+  message: MessageType;
   isGrouped?: boolean;
   onReactionAdd: (messageId: string, emoji: string) => void;
   onThreadReply: (messageId: string) => void;
+  onDelete: (messageId: string) => void;
 }
 
-export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply }: MessageProps) => {
+export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDelete }: MessageProps) => {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -55,7 +51,7 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply }: Me
                     dark:bg-gray-700 text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   <span>{emoji}</span>
-                  <span className="ml-1">{users.length}</span>
+                  <span className="ml-1">{(users as string[]).length}</span>
                 </button>
               ))}
             </div>
@@ -76,6 +72,12 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply }: Me
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               🧵
+            </button>
+            <button
+              onClick={() => onDelete(message.messageId)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <FaTrash size={14} />
             </button>
           </div>
         )}

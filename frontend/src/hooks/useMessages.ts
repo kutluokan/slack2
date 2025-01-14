@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { socket } from '../config/socket';
 
-interface Message {
+export interface Message {
   messageId: string;
   channelId: string;
   timestamp: number;
@@ -47,10 +47,15 @@ export const useMessages = (channelId: string) => {
         }));
       });
 
+      socket.on('message_deleted', (messageId: string) => {
+        setMessages(prev => prev.filter(msg => msg.messageId !== messageId));
+      });
+
       return () => {
         socket.off('messages');
         socket.off('message');
         socket.off('reaction_added');
+        socket.off('message_deleted');
         socket.emit('leave_channel', channelId);
       };
     } else {
@@ -81,5 +86,9 @@ export const useMessages = (channelId: string) => {
     });
   };
 
-  return { messages, sendMessage, addReaction };
+  const deleteMessage = (messageId: string) => {
+    socket.emit('delete_message', { messageId });
+  };
+
+  return { messages, sendMessage, addReaction, deleteMessage };
 }; 
