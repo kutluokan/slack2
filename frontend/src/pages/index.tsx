@@ -6,6 +6,7 @@ import { DirectMessagesList } from '../components/DirectMessagesList';
 import { MessageList } from '../components/MessageList';
 import { useMessages } from '../hooks/useMessages';
 import { AIAvatarList } from '../components/AIAvatarList';
+import { MessageInput } from '../components/MessageInput';
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
@@ -165,31 +166,10 @@ export default function Home() {
             {/* Message Input */}
             {!isAIAvatarView && (
               <div className="p-4 border-t bg-white">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type a message..."
-                    className="flex-1 px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        sendMessage(e.currentTarget.value, user.uid, user.displayName || user.email || 'Anonymous');
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={(e) => {
-                      const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                      if (input.value.trim()) {
-                        sendMessage(input.value, user.uid, user.displayName || user.email || 'Anonymous');
-                        input.value = '';
-                      }
-                    }}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  >
-                    Send
-                  </button>
-                </div>
+                <MessageInput
+                  onSendMessage={sendMessage}
+                  currentUser={user}
+                />
               </div>
             )}
           </div>

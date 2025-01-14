@@ -58,6 +58,23 @@ io.on('connection', (socket) => {
 
       // Broadcast the message to all clients in the channel
       io.to(data.channelId).emit('message', savedMessage);
+
+      // Check if message mentions @AI Assistant
+      const mentionRegex = /@AI/;
+      if (mentionRegex.test(data.content)) {
+        // Get channel messages for context
+        const messages = await messageService.getChannelMessages(data.channelId);
+        
+        // Generate and save AI response
+        const aiResponse = await messageService.handleAIInteraction(
+          data.channelId,
+          messages.slice(-10), // Use last 10 messages for context
+          savedMessage
+        );
+
+        // Broadcast AI response
+        io.to(data.channelId).emit('message', aiResponse);
+      }
     } catch (error) {
       console.error('Error saving message:', error);
       socket.emit('error', 'Failed to save message');
@@ -157,6 +174,16 @@ io.on('connection', (socket) => {
       socket.emit('users', users);
     } catch (error) {
       console.error('Error getting users:', error);
+    }
+  });
+
+  socket.on('get_mentionable_users', async () => {
+    try {
+      const users = await userService.getMentionableUsers();
+      socket.emit('mentionable_users', users);
+    } catch (error) {
+      console.error('Error getting mentionable users:', error);
+      socket.emit('error', 'Failed to get mentionable users');
     }
   });
 

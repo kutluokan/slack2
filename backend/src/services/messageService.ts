@@ -1,5 +1,6 @@
 import { PutCommand, QueryCommand, DeleteCommand, UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb";
+import { aiService } from "./aiService";
 
 const TABLE_NAME = "K_Messages";
 
@@ -11,6 +12,7 @@ export interface Message {
   content: string;
   username: string;
   reactions?: { [key: string]: string[] };
+  isAIResponse?: boolean;
 }
 
 export const messageService = {
@@ -25,7 +27,8 @@ export const messageService = {
         userId: message.userId,
         content: message.content,
         username: message.username,
-        reactions: {}
+        reactions: {},
+        isAIResponse: message.isAIResponse || false,
       },
     });
 
@@ -118,5 +121,40 @@ export const messageService = {
 
     const response = await docClient.send(command);
     return response.Item as Message;
-  }
+  },
+
+  async handleAIInteraction(channelId: string, messages: Message[], triggerMessage: Message) {
+    try {
+      // Format messages for OpenAI
+      const formattedMessages = messages.map(msg => ({
+        role: msg.isAIResponse ? 'assistant' as const : 'user' as const,
+        content: msg.content
+      }));
+
+      // Add the trigger message
+      formattedMessages.push({
+        role: 'user' as const,
+        content: triggerMessage.content
+      });
+
+      // Get AI response
+      const aiResponse = await aiService.generateResponse(formattedMessages);
+
+      // Create AI message
+      const aiMessage: Message = {
+        channelId,
+        timestamp: Date.now(),
+        userId: 'ai-assistant',
+        content: aiResponse,
+        username: 'AI Assistant',
+        isAIResponse: true,
+        messageId: '', // Will be set in createMessage
+      };
+
+      return await this.createMessage(aiMessage);
+    } catch (error) {
+      console.error('Error handling AI interaction:', error);
+      throw error;
+    }
+  },
 }; 

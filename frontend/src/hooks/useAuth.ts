@@ -28,12 +28,14 @@ export const useAuth = () => {
     // Wait for socket connection before syncing
     socket.on('connect', () => {
       console.log('Syncing user data after connection...');
-      socket.emit('sync_user', {
+      // Only send non-null values
+      const userData = {
         userId: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Anonymous',
-        photoURL: firebaseUser.photoURL,
-      });
+        ...(firebaseUser.email && { email: firebaseUser.email }),
+        ...(firebaseUser.displayName && { displayName: firebaseUser.displayName }),
+        ...(firebaseUser.photoURL && { photoURL: firebaseUser.photoURL }),
+      };
+      socket.emit('sync_user', userData);
     });
 
     socket.on('user_synced', (syncedUser: SyncedUser) => {
