@@ -14,6 +14,7 @@ services:
       - backend
     networks:
       - app-network
+    restart: always
 
   frontend:
     build:
@@ -22,14 +23,18 @@ services:
     expose:
       - "3000"
     environment:
-      # For internal API calls from frontend server-side code
+      # For server-side API calls (internal Docker network)
       - NEXT_PRIVATE_API_URL=http://backend:4000
-      # For browser-side API calls that go through Nginx
+      # For client-side API calls (through Nginx)
       - NEXT_PUBLIC_API_URL=/api
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - PORT=3000
     depends_on:
       - backend
     networks:
       - app-network
+    restart: always
 
   backend:
     build:
@@ -43,8 +48,38 @@ services:
       - PORT=4000
       # For internal service communication
       - FRONTEND_URL=http://frontend:3000
-      # For generating external URLs in responses
+      # For generating public URLs in API responses
       - PUBLIC_URL=http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com
+      - NODE_ENV=production
+      - NPM_CONFIG_PRODUCTION=true
+      - NODE_OPTIONS="--max-old-space-size=2048"
+    networks:
+      - app-network
+    restart: always
+
+  upload_service:
+    build:
+      context: ./rag
+      args:
+        INSTALL_JUPYTER: false
+    env_file:
+      - ./rag/.env
+    command: python upload.py
+    networks:
+      - app-network
+    restart: on-failure
+
+  rag_app:
+    build:
+      context: ./rag
+      args:
+        INSTALL_JUPYTER: false
+    expose:
+      - "8000"
+    env_file:
+      - ./rag/.env
+    command: python main.py
+    restart: always
     networks:
       - app-network
 
