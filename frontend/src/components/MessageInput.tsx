@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { socket } from '../config/socket';
+import Image from 'next/image';
 
 interface User {
   userId: string;
@@ -138,7 +139,13 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
             >
               {user.photoURL && (
-                <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
+                <Image 
+                  src={user.photoURL} 
+                  alt="" 
+                  width={24} 
+                  height={24} 
+                  className="rounded-full" 
+                />
               )}
               <span className={user.isSystemUser ? 'text-blue-600 font-medium' : ''}>
                 {user.displayName || user.email}

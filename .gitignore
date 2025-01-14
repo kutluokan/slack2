@@ -1,3 +1,5 @@
+docs
+*.pem*
 # Dependencies
 node_modules
 .pnp

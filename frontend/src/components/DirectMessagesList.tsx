@@ -31,7 +31,6 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
   const [dmChannels, setDmChannels] = useState<Channel[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isSelectingUser, setIsSelectingUser] = useState(false);
-  const [hoveredChannel, setHoveredChannel] = useState<string | null>(null);
 
   useEffect(() => {
     if (currentUser?.uid) {
@@ -54,7 +53,7 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
       const handleChannelDeleted = (deletedChannelId: string) => {
         setDmChannels(prev => prev.filter(channel => channel.channelId !== deletedChannelId));
         if (selectedChannelId === deletedChannelId) {
-          onChannelSelect(null); // Reset selected channel if it was deleted
+          onChannelSelect({ id: '', name: '' });
         }
       };
 

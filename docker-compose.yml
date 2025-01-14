@@ -1,25 +1,53 @@
 version: '3.8'
 
 services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:4000
+      # For internal API calls from frontend server-side code
+      - NEXT_PRIVATE_API_URL=http://backend:4000
+      # For browser-side API calls that go through Nginx
+      - NEXT_PUBLIC_API_URL=/api
     depends_on:
       - backend
+    networks:
+      - app-network
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
     env_file:
       - ./backend/.env
     environment:
       - PORT=4000
+      # For internal service communication
       - FRONTEND_URL=http://frontend:3000
+      # For generating external URLs in responses
+      - PUBLIC_URL=http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

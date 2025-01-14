@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 interface AIAvatarListProps {
   onUserSelect: (userId: string) => void;
 }

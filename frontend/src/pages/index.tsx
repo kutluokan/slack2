@@ -20,7 +20,8 @@ export default function Home() {
             return parsed;
           }
         }
-      } catch (e) {
+      } catch (_) {
+        console.debug(_);
         localStorage.removeItem('selectedChannel');
       }
     }

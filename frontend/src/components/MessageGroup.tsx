@@ -1,41 +1,26 @@
 import { Message } from './Message';
-import { socket } from '../config/socket';
-
-interface MessageData {
-  messageId: string;
-  channelId: string;
-  timestamp: number;
-  userId: string;
-  content: string;
-  username: string;
-  reactions?: { [key: string]: string[] };
-}
+import type { Message as MessageType } from '../hooks/useMessages';
 
 interface MessageGroupProps {
-  messages: MessageData[];
+  messages: MessageType[];
+  onDelete: (messageId: string) => void;
+  onReactionAdd: (messageId: string, emoji: string) => void;
+  onThreadReply: (messageId: string) => void;
 }
 
-export const MessageGroup = ({ messages }: MessageGroupProps) => {
+export const MessageGroup = ({ messages, onDelete, onReactionAdd, onThreadReply }: MessageGroupProps) => {
   if (!messages.length) return null;
-
-  const handleReactionAdd = (messageId: string, emoji: string) => {
-    socket.emit('add_reaction', { messageId, emoji });
-  };
-
-  const handleThreadReply = (messageId: string) => {
-    // Implement thread reply logic when needed
-    console.log('Thread reply:', messageId);
-  };
 
   return (
     <div className="group py-2 hover:bg-gray-50">
       {messages.map((message, index) => (
         <Message
-          key={message.timestamp}
+          key={message.messageId}
           message={message}
           isGrouped={index > 0}
-          onReactionAdd={handleReactionAdd}
-          onThreadReply={handleThreadReply}
+          onReactionAdd={onReactionAdd}
+          onThreadReply={onThreadReply}
+          onDelete={onDelete}
         />
       ))}
       <div className="hidden group-hover:flex items-center gap-2 mt-1 ml-1">

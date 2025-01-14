@@ -1,15 +1,9 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
-import { Message } from './Message';
+import { MessageGroup } from './MessageGroup';
+import type { Message as MessageType } from '../hooks/useMessages';
 
 interface MessageListProps {
-  messages: Array<{
-    messageId: string;
-    content: string;
-    userId: string;
-    username: string;
-    timestamp: number;
-    reactions?: { [key: string]: string[] };
-  }>;
+  messages: MessageType[];
   onReactionAdd: (messageId: string, emoji: string) => void;
   onThreadReply: (messageId: string) => void;
   onDelete: (messageId: string) => void;
@@ -24,14 +18,31 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply, onDelete }
   const groupedMessages = useMemo(() => {
     // Sort messages by timestamp to ensure newest is at bottom
     const sortedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
-    return sortedMessages.reduce((acc, message, index) => {
+    
+    // Group messages by user and time proximity
+    const groups: typeof messages[] = [];
+    let currentGroup: typeof messages = [];
+    
+    sortedMessages.forEach((message, index) => {
       const prevMessage = sortedMessages[index - 1];
-      const isGrouped = prevMessage && 
-        prevMessage.userId === message.userId &&
-        message.timestamp - prevMessage.timestamp < 300000; // 5 minutes
-
-      return [...acc, { ...message, isGrouped }];
-    }, [] as Array<typeof messages[0] & { isGrouped?: boolean }>);
+      
+      if (prevMessage && 
+          prevMessage.userId === message.userId &&
+          message.timestamp - prevMessage.timestamp < 300000) { // 5 minutes
+        currentGroup.push(message);
+      } else {
+        if (currentGroup.length > 0) {
+          groups.push([...currentGroup]);
+        }
+        currentGroup = [message];
+      }
+    });
+    
+    if (currentGroup.length > 0) {
+      groups.push(currentGroup);
+    }
+    
+    return groups;
   }, [messages]);
 
   // Initial scroll to bottom when messages are first loaded
@@ -74,14 +85,13 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply, onDelete }
       onScroll={handleScroll}
       className="flex flex-col space-y-1 overflow-y-auto h-full"
     >
-      {groupedMessages.map((message) => (
-        <Message
-          key={message.messageId}
-          message={message}
-          isGrouped={message.isGrouped}
+      {groupedMessages.map((group) => (
+        <MessageGroup
+          key={group[0].messageId}
+          messages={group}
+          onDelete={onDelete}
           onReactionAdd={onReactionAdd}
           onThreadReply={onThreadReply}
-          onDelete={onDelete}
         />
       ))}
       <div ref={messagesEndRef} />
