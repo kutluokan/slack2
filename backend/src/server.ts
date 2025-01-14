@@ -13,15 +13,25 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://frontend:3000'],
+    origin: [
+      'http://localhost:3000',
+      'http://frontend:3000',
+      'http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com'
+    ],
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    transports: ['websocket', 'polling']
   }
 });
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://frontend:3000'],
+  origin: [
+    'http://localhost:3000',
+    'http://frontend:3000',
+    'http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com'
+  ],
   credentials: true
 }));
 app.use(express.json());
