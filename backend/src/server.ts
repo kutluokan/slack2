@@ -15,8 +15,8 @@ const httpServer = createServer(app);
 const allowedOrigins = [
   'http://localhost:3000',
   'http://frontend:3000',
-  'http://ec2-18-222-164-243.us-east-2.compute.amazonaws.com',
-  'https://ec2-18-222-164-243.us-east-2.compute.amazonaws.com'
+  'http://ec2-18-189-195-81.us-east-2.compute.amazonaws.com',
+  'https://ec2-18-189-195-81.us-east-2.compute.amazonaws.com'
 ];
 
 const io = new Server(httpServer, {
