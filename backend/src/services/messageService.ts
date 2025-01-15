@@ -36,6 +36,7 @@ export const messageService = {
         username: message.username,
         reactions: {},
         isAIResponse: message.isAIResponse || false,
+        fileAttachment: message.fileAttachment || undefined,
       },
     });
 

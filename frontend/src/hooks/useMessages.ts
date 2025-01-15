@@ -30,7 +30,7 @@ export const useMessages = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    if (channelId) {
+    if (channelId && channelId !== '') {
       socket.emit('join_channel', channelId);
       socket.emit('get_messages', channelId);
 
@@ -63,7 +63,9 @@ export const useMessages = (channelId: string) => {
         socket.off('message');
         socket.off('reaction_added');
         socket.off('message_deleted');
-        socket.emit('leave_channel', channelId);
+        if (channelId) {
+          socket.emit('leave_channel', channelId);
+        }
       };
     } else {
       setMessages([]);
@@ -82,6 +84,8 @@ export const useMessages = (channelId: string) => {
       s3Key: string;
     }
   ) => {
+    if (!channelId) return;
+
     const messageData = {
       channelId,
       userId,
@@ -98,8 +102,8 @@ export const useMessages = (channelId: string) => {
   };
 
   const addReaction = (messageId: string, emoji: string) => {
-    if (!socket.auth?.userId) {
-      console.error('User not authenticated');
+    if (!socket.auth?.userId || !channelId) {
+      console.error('User not authenticated or no channel selected');
       return;
     }
     socket.emit('add_reaction', { 
@@ -110,6 +114,7 @@ export const useMessages = (channelId: string) => {
   };
 
   const deleteMessage = (messageId: string) => {
+    if (!channelId) return;
     socket.emit('delete_message', { messageId });
   };
 

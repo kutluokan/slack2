@@ -20,14 +20,13 @@ export default function Home() {
             return parsed;
           }
         }
-      } catch (_) {
-        console.debug(_);
-        localStorage.removeItem('selectedChannel');
+      } catch (error) {
+        console.error('Error parsing saved channel:', error);
       }
     }
-    return { id: 'general', name: 'general' };
+    return null;
   });
-  const { messages, sendMessage, addReaction, deleteMessage } = useMessages(selectedChannel.id);
+  const { messages, sendMessage, addReaction, deleteMessage } = useMessages(selectedChannel?.id || '');
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
   const [isAIAvatarView, setIsAIAvatarView] = useState(false);
 
@@ -70,6 +69,7 @@ export default function Home() {
     }
 
     if (isAIAvatarView) {
+      setSelectedChannel(channel);
       localStorage.setItem('selectedChannel', JSON.stringify(channel));
       window.location.reload();
     } else {
