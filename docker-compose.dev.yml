@@ -12,6 +12,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - rag_app
     networks:
       - app-network
 
@@ -27,6 +28,7 @@ services:
     environment:
       - NEXT_PRIVATE_API_URL=http://backend:4000
       - NEXT_PUBLIC_API_URL=http://localhost/api
+      - RAG_SERVICE_URL=http://localhost:8000
     depends_on:
       - backend
     networks:
@@ -48,50 +50,25 @@ services:
       - FRONTEND_URL=http://localhost:3000
       - PUBLIC_URL=http://localhost
       - NODE_ENV=development
-    networks:
-      - app-network
-
-  upload_service:
-    build:
-      context: ./rag
-      args:
-        INSTALL_JUPYTER: false
-    env_file:
-      - ./rag/.env
-    volumes:
-      - ./rag:/app
-    command: python upload.py
+      - RAG_SERVICE_URL=http://rag_app:8000
+    depends_on:
+      - rag_app
     networks:
       - app-network
 
   rag_app:
     build:
       context: ./rag
-      args:
-        INSTALL_JUPYTER: false
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     env_file:
       - ./rag/.env
     volumes:
       - ./rag:/app
-    command: python main.py
-    restart: always
-    networks:
-      - app-network
-
-  jupyter:
-    build:
-      context: ./rag
-      args:
-        INSTALL_JUPYTER: true
-    ports:
-      - "8888:8888"
-    env_file:
-      - ./rag/.env
-    volumes:
-      - ./rag:/app
-    command: jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - PYTHONUNBUFFERED=1
     networks:
       - app-network
 

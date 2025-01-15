@@ -6,51 +6,102 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_openai import OpenAIEmbeddings
 import os
 from dotenv import load_dotenv
+from typing import List, Dict
 import uvicorn
 
 load_dotenv()
 
-# Environment variables setup
+# Load environment variables
 os.environ["PINECONE_API_KEY"] = os.getenv("PINECONE_API_KEY")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY")
 os.environ["LANGCHAIN_TRACING_V2"] = os.getenv("LANGCHAIN_TRACING_V2")
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT")
 PINECONE_INDEX = os.getenv("PINECONE_INDEX")
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Initialize AI components
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-document_vectorstore = PineconeVectorStore(index_name=PINECONE_INDEX, embedding=embeddings)
-retriever = document_vectorstore.as_retriever()
-
-# DO NOT CHANGE THE MODEL NAME. IT MUST BE gpt-4o-mini.
-llm = ChatOpenAI(temperature=0.7, model_name="gpt-4o-mini")
-
-class Message(BaseModel):
+class ChatMessage(BaseModel):
+    role: str
     content: str
 
-@app.post("/chat")
-async def chat(message: Message):
-    try:
-        # Get context from vector store
-        context = retriever.invoke(message.content)
+class RagRequest(BaseModel):
+    prompt: str
+    chat_history: List[ChatMessage] = []
+
+async def get_rag_response(prompt: str, chat_history: List[Dict[str, str]] = None) -> str:
+    """
+    Get a response using RAG capabilities.
+    
+    Args:
+        prompt (str): The user's question or prompt
+        chat_history (List[Dict[str, str]], optional): Previous chat messages
         
-        # Create prompt with context
-        template = PromptTemplate(
-            template="{query} Context: {context}", 
-            input_variables=["query", "context"]
+    Returns:
+        str: The AI's response incorporating context from documents and chat
+    """
+    try:
+        # Initialize embeddings
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+        
+        # Query the vector database
+        document_vectorstore = PineconeVectorStore(index_name=PINECONE_INDEX, embedding=embeddings)
+        retriever = document_vectorstore.as_retriever()
+        relevant_docs = retriever.invoke(prompt)
+        
+        # Format document context
+        doc_context = "\n\n".join([
+            f"Source: {doc.metadata['source']}\nContent: {doc.page_content}"
+            for doc in relevant_docs
+        ])
+        
+        # Format chat history context if provided
+        chat_context = ""
+        if chat_history:
+            chat_context = "\n".join([
+                f"{msg['role']}: {msg['content']}"
+                for msg in chat_history[-5:]  # Include last 5 messages for context
+            ])
+        
+        # Create prompt template with both document and chat context
+        template = """Please answer the following question using the provided context from both documents and chat history.
+
+Question: {query}
+
+Relevant Documents:
+{doc_context}
+
+Chat History:
+{chat_context}
+
+Please provide a detailed answer based on the above context."""
+
+        prompt_template = PromptTemplate(
+            template=template,
+            input_variables=["query", "doc_context", "chat_context"]
         )
-        prompt_with_context = template.invoke({
-            "query": message.content, 
-            "context": context
+        
+        # Generate the full prompt
+        full_prompt = prompt_template.invoke({
+            "query": prompt,
+            "doc_context": doc_context,
+            "chat_context": chat_context
         })
         
-        # Get AI response
-        response = llm.invoke(prompt_with_context)
+        # Get response from LLM
+        llm = ChatOpenAI(temperature=0.7, model_name="gpt-4o-mini")
+        response = llm.invoke(full_prompt)
         
-        return {"response": response.content}
+        return response.content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate")
+async def generate_response(request: RagRequest):
+    try:
+        chat_history = [dict(msg) for msg in request.chat_history]
+        response = await get_rag_response(request.prompt, chat_history)
+        return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

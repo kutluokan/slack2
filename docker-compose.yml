@@ -12,6 +12,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - rag_app
     networks:
       - app-network
     restart: always
@@ -30,6 +31,7 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - PORT=3000
+      - RAG_SERVICE_URL=http://rag_app:8000
     depends_on:
       - backend
     networks:
@@ -51,32 +53,24 @@ services:
       - NODE_ENV=production
       - NPM_CONFIG_PRODUCTION=true
       - NODE_OPTIONS="--max-old-space-size=2048"
+      - RAG_SERVICE_URL=http://rag_app:8000
+    depends_on:
+      - rag_app
     networks:
       - app-network
     restart: always
 
-  upload_service:
-    build:
-      context: ./rag
-      args:
-        INSTALL_JUPYTER: false
-    env_file:
-      - ./rag/.env
-    command: python upload.py
-    networks:
-      - app-network
-    restart: on-failure
-
   rag_app:
     build:
       context: ./rag
-      args:
-        INSTALL_JUPYTER: false
+      dockerfile: Dockerfile
     expose:
       - "8000"
     env_file:
       - ./rag/.env
-    command: python main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     restart: always
     networks:
       - app-network
