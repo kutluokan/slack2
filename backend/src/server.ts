@@ -12,7 +12,7 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-const allowedOrigins = [
+const allowedOrigins = process.env.PUBLIC_URLS?.split(',') || [
   'http://localhost:3000',
   'http://frontend:3000',
   'http://ec2-18-189-195-81.us-east-2.compute.amazonaws.com',

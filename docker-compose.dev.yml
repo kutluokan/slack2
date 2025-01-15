@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     image: nginx:alpine
@@ -25,10 +23,12 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    env_file:
+      - ./.env
     environment:
       - NEXT_PRIVATE_API_URL=http://backend:4000
       - NEXT_PUBLIC_API_URL=http://localhost/api
-      - RAG_SERVICE_URL=http://localhost:8000
+      - RAG_SERVICE_URL=http://rag_app:8000
     depends_on:
       - backend
     networks:
@@ -44,13 +44,14 @@ services:
       - ./backend:/app
       - /app/node_modules
     env_file:
-      - ./backend/.env
+      - ./.env
     environment:
       - PORT=4000
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=http://frontend:3000
       - PUBLIC_URL=http://localhost
       - NODE_ENV=development
       - RAG_SERVICE_URL=http://rag_app:8000
+      - PUBLIC_URLS=http://localhost,http://ec2-18-189-195-81.us-east-2.compute.amazonaws.com
     depends_on:
       - rag_app
     networks:
@@ -63,7 +64,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ./rag/.env
+      - ./.env
     volumes:
       - ./rag:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
