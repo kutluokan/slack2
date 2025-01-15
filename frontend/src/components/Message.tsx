@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaDownload } from 'react-icons/fa';
 import type { Message as MessageType } from '../hooks/useMessages';
 
 interface MessageProps {
@@ -21,6 +21,14 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div 
       className="group px-4 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -39,6 +47,33 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
       <div className="flex items-start">
         <div className="flex-1">
           <p className="text-sm">{message.content}</p>
+          
+          {/* File Attachment */}
+          {message.fileAttachment && (
+            <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="text-gray-500 dark:text-gray-300">
+                    <FaDownload size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{message.fileAttachment.fileName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatFileSize(message.fileAttachment.fileSize)}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={message.fileAttachment.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                  Download
+                </a>
+              </div>
+            </div>
+          )}
           
           {/* Reactions */}
           {message.reactions && Object.entries(message.reactions).length > 0 && (

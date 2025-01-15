@@ -10,6 +10,13 @@ export interface Message {
   username: string;
   reactions?: { [key: string]: string[] };
   parentMessageId?: string;
+  fileAttachment?: {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    fileUrl: string;
+    s3Key: string;
+  };
 }
 
 interface ReactionPayload {
@@ -63,15 +70,31 @@ export const useMessages = (channelId: string) => {
     }
   }, [channelId]);
 
-  const sendMessage = (content: string, userId: string, username: string, parentMessageId?: string) => {
+  const sendMessage = (
+    content: string, 
+    userId: string, 
+    username: string, 
+    fileAttachment?: {
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      fileUrl: string;
+      s3Key: string;
+    }
+  ) => {
     const messageData = {
       channelId,
       userId,
       content,
       username,
-      parentMessageId
+      fileAttachment
     };
-    socket.emit('message', messageData);
+
+    if (fileAttachment) {
+      socket.emit('message_with_file', messageData);
+    } else {
+      socket.emit('message', messageData);
+    }
   };
 
   const addReaction = (messageId: string, emoji: string) => {

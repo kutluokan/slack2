@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { socket } from '../config/socket';
 import Image from 'next/image';
+import { FaPaperclip } from 'react-icons/fa';
 
 interface User {
   userId: string;
@@ -11,7 +12,13 @@ interface User {
 }
 
 interface MessageInputProps {
-  onSendMessage: (content: string, userId: string, username: string) => void;
+  onSendMessage: (content: string, userId: string, username: string, fileAttachment?: {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    fileUrl: string;
+    s3Key: string;
+  }) => void;
   currentUser: {
     uid: string;
     displayName?: string | null;
@@ -25,7 +32,9 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
   const [mentionableUsers, setMentionableUsers] = useState<User[]>([]);
   const [mentionSearch, setMentionSearch] = useState('');
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleMentionableUsers = (users: User[]) => {
@@ -94,6 +103,58 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Request upload URL
+      socket.emit('request_upload_url', {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size
+      });
+
+      // Wait for the upload URL
+      const uploadData = await new Promise<{ uploadUrl: string; fileUrl: string; key: string }>((resolve, reject) => {
+        socket.once('upload_url_generated', resolve);
+        socket.once('error', reject);
+      });
+
+      // Upload the file
+      await fetch(uploadData.uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type
+        }
+      });
+
+      // Send message with file attachment
+      onSendMessage(
+        `Shared a file: ${file.name}`,
+        currentUser.uid,
+        currentUser.displayName || 'Anonymous',
+        {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          fileUrl: uploadData.fileUrl,
+          s3Key: uploadData.key
+        }
+      );
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const filteredUsers = mentionableUsers.filter(user => {
     const searchText = user.displayName || user.email || '';
     return searchText.toLowerCase().includes(mentionSearch);
@@ -110,7 +171,22 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
           onKeyDown={handleKeyDown}
           placeholder="Type a message... (Use @ to mention)"
           className="flex-1 px-4 py-2 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isUploading}
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
+          disabled={isUploading}
+          title="Attach file"
+        >
+          <FaPaperclip className={isUploading ? 'animate-spin' : ''} />
+        </button>
         <button
           onClick={() => {
             if (inputValue.trim()) {
@@ -123,7 +199,8 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
               setShowMentions(false);
             }
           }}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:bg-blue-300"
+          disabled={isUploading}
         >
           Send
         </button>

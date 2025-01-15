@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { messageService, Message } from './services/messageService';
 import { channelService } from './services/channelService';
 import { userService } from './services/userService';
+import { s3Service } from './services/s3Service';
 
 dotenv.config();
 
@@ -224,6 +225,32 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error deleting channel:', error);
       socket.emit('error', 'Failed to delete channel');
+    }
+  });
+
+  socket.on('request_upload_url', async (fileData: { fileName: string; fileType: string; fileSize: number }) => {
+    try {
+      const uploadData = await s3Service.getUploadPresignedUrl(fileData);
+      socket.emit('upload_url_generated', uploadData);
+    } catch (error) {
+      console.error('Error generating upload URL:', error);
+      socket.emit('error', 'Failed to generate upload URL');
+    }
+  });
+
+  socket.on('message_with_file', async (data: Message) => {
+    try {
+      // Save message to DynamoDB
+      const savedMessage = await messageService.createMessage({
+        ...data,
+        timestamp: Date.now(),
+      });
+
+      // Broadcast the message to all clients in the channel
+      io.to(data.channelId).emit('message', savedMessage);
+    } catch (error) {
+      console.error('Error saving message with file:', error);
+      socket.emit('error', 'Failed to save message with file');
     }
   });
 

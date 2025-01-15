@@ -13,6 +13,13 @@ export interface Message {
   username: string;
   reactions?: { [key: string]: string[] };
   isAIResponse?: boolean;
+  fileAttachment?: {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    fileUrl: string;
+    s3Key: string;
+  };
 }
 
 export const messageService = {
