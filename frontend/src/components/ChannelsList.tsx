@@ -88,6 +88,9 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
     event.stopPropagation();
     if (window.confirm('Are you sure you want to delete this channel? This action cannot be undone.')) {
       socket.emit('delete_channel', channelId);
+      if (selectedChannelId === channelId) {
+        onChannelSelect(null);
+      }
     }
   };
 
@@ -111,6 +114,7 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
             onChange={(e) => setNewChannelName(e.target.value)}
             placeholder="Channel name"
             className="w-full px-2 py-1 text-sm text-black rounded"
+            autoFocus
           />
           <div className="flex gap-2 mt-2">
             <button
@@ -120,7 +124,10 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
               Create
             </button>
             <button
-              onClick={() => setIsCreating(false)}
+              onClick={() => {
+                setIsCreating(false);
+                setNewChannelName('');
+              }}
               className="px-2 py-1 text-sm bg-gray-500 rounded hover:bg-gray-600"
             >
               Cancel
@@ -130,6 +137,11 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
       )}
 
       <ul className="space-y-1">
+        {channels.length === 0 && !isCreating && (
+          <li className="px-2 py-1 text-gray-400 text-sm">
+            No channels available
+          </li>
+        )}
         {channels.map((channel) => (
           <li
             key={channel.channelId}

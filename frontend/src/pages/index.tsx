@@ -24,39 +24,84 @@ interface Channel {
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
-  const [selectedChannel, setSelectedChannel] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedChannel = localStorage.getItem('selectedChannel');
-      try {
-        if (savedChannel) {
-          const parsed = JSON.parse(savedChannel);
-          if (parsed && parsed.id && parsed.name) {
-            return parsed;
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing saved channel:', error);
-      }
-    }
-    return null;
-  });
+  const [selectedChannel, setSelectedChannel] = useState<{ id: string; name: string } | null>(null);
   const { messages, sendMessage, addReaction, deleteMessage } = useMessages(selectedChannel?.id || '');
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
   const [isAIAvatarView, setIsAIAvatarView] = useState(false);
   const [activeThread, setActiveThread] = useState<MessageType | null>(null);
 
+  // Load saved channel on initial render and after login
   useEffect(() => {
-    if (!selectedChannel) {
-      // Get channels and select either last visited or first available
-      socket.emit('get_channels');
-      socket.once('channels', (channels: Channel[]) => {
-        if (channels && channels.length > 0) {
-          const newChannel = { id: channels[0].channelId, name: channels[0].name };
-          setSelectedChannel(newChannel);
-          localStorage.setItem('selectedChannel', JSON.stringify(newChannel));
+    if (user) {
+      const savedChannel = localStorage.getItem('selectedChannel');
+      try {
+        if (savedChannel) {
+          const parsed = JSON.parse(savedChannel);
+          if (parsed && parsed.id && parsed.name) {
+            // Verify if the channel still exists
+            socket.emit('get_channels');
+            socket.once('channels', (channels: Channel[]) => {
+              const channelExists = channels.some(ch => ch.channelId === parsed.id);
+              if (channelExists) {
+                setSelectedChannel(parsed);
+              } else {
+                // Channel no longer exists, clear selection
+                localStorage.removeItem('selectedChannel');
+                setSelectedChannel(null);
+              }
+            });
+          } else {
+            localStorage.removeItem('selectedChannel');
+            setSelectedChannel(null);
+          }
+        } else {
+          // No saved channel, try to select first available
+          socket.emit('get_channels');
+          socket.once('channels', (channels: Channel[]) => {
+            if (channels && channels.length > 0) {
+              const newChannel = { id: channels[0].channelId, name: channels[0].name };
+              setSelectedChannel(newChannel);
+              localStorage.setItem('selectedChannel', JSON.stringify(newChannel));
+            } else {
+              setSelectedChannel(null);
+            }
+          });
         }
-      });
+      } catch (error) {
+        console.error('Error loading saved channel:', error);
+        localStorage.removeItem('selectedChannel');
+        setSelectedChannel(null);
+      }
+    } else {
+      // Clear selection when logged out
+      setSelectedChannel(null);
+      localStorage.removeItem('selectedChannel');
     }
+  }, [user]);
+
+  // Handle channel deletion
+  useEffect(() => {
+    const handleChannelDeleted = (deletedChannelId: string) => {
+      if (selectedChannel?.id === deletedChannelId) {
+        socket.emit('get_channels');
+        socket.once('channels', (channels: Channel[]) => {
+          if (channels && channels.length > 0) {
+            const newChannel = { id: channels[0].channelId, name: channels[0].name };
+            setSelectedChannel(newChannel);
+            localStorage.setItem('selectedChannel', JSON.stringify(newChannel));
+          } else {
+            setSelectedChannel(null);
+            localStorage.removeItem('selectedChannel');
+          }
+        });
+      }
+    };
+
+    socket.on('channel_deleted', handleChannelDeleted);
+
+    return () => {
+      socket.off('channel_deleted', handleChannelDeleted);
+    };
   }, [selectedChannel]);
 
   // Handle D-ID script
@@ -200,111 +245,82 @@ export default function Home() {
 
       <main className="container mx-auto px-4">
         <div className="flex h-screen">
-          {/* Sidebar */}
-          <div className="w-64 bg-gray-800 text-white">
-            <div className="p-4">
-              <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold">Chat Genius AI</h1>
-                <button
-                  onClick={logout}
-                  className="text-sm bg-red-500 px-2 py-1 rounded hover:bg-red-600 transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
-              <div className="mt-2 text-sm text-gray-300">
-                {user.email ?? ''}
-              </div>
-              {user && <PresenceIndicator userId={user.uid} />}
-              
-              {/* Add SearchBar component */}
-              <div className="mt-4">
-                <SearchBar onResultSelect={handleSearchResultSelect} />
-              </div>
-
-              <ChannelsList 
-                user={{
-                  uid: user.uid,
-                  email: user.email
-                }} 
-                onChannelSelect={handleChannelChange}
-                selectedChannelId={selectedChannel.id}
-              />
-              <DirectMessagesList
-                currentUser={{
-                  uid: user.uid,
-                  email: user.email
-                }}
-                onChannelSelect={handleChannelChange}
-                selectedChannelId={selectedChannel.id}
-              />
-              <AIAvatarList
-                onUserSelect={handleAIAvatarSelect}
-              />
+          {/* Sidebar - Always visible */}
+          <div className="w-64 bg-gray-800 text-white p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold">Chat Genius AI</h1>
+              <button
+                onClick={logout}
+                className="text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
+              >
+                Logout
+              </button>
             </div>
+            <div className="mb-4">
+              <SearchBar onResultSelect={handleSearchResultSelect} />
+            </div>
+            <div className="mb-4">
+              <PresenceIndicator userId={user.uid} />
+            </div>
+            <ChannelsList
+              user={user}
+              onChannelSelect={handleChannelChange}
+              selectedChannelId={selectedChannel?.id || ''}
+            />
+            <DirectMessagesList
+              currentUser={user}
+              onChannelSelect={handleChannelChange}
+              selectedChannelId={selectedChannel?.id || ''}
+            />
+            <AIAvatarList onUserSelect={handleAIAvatarSelect} />
           </div>
 
-          {/* Main Content */}
+          {/* Main Content Area */}
           <div className="flex-1 flex flex-col">
-            {/* Header */}
-            <div className="h-16 border-b flex items-center px-6">
-              <h2 className="text-lg font-semibold">
-                {isAIAvatarView ? "Kay's AI Avatar" : `${selectedChannel.name.startsWith('dm_') ? '@' : '#'}${selectedChannel.name}`}
-              </h2>
-            </div>
-
-            {/* Content Area */}
-            <div className="flex-1 overflow-hidden">
-              <div className={`flex h-full ${activeThread ? 'divide-x' : ''}`}>
-                <div className={`flex-1 flex flex-col ${activeThread ? 'w-7/12' : 'w-full'}`}>
-                  <div className="flex-1 overflow-y-auto p-6">
-                    {isAIAvatarView ? (
-                      <div className="flex flex-col items-center justify-center h-full">
-                        <div id="did-host" className="w-full h-full"></div>
-                        <div className="text-center mt-4 text-gray-600">
-                          Welcome to Kay&apos;s AI Avatar! This is a dedicated space for interacting with the D-ID powered AI avatar.
-                        </div>
-                      </div>
-                    ) : (
-                      <MessageList
-                        messages={messages.filter(msg => !msg.parentMessageId)} // Only show non-thread messages
-                        onReactionAdd={addReaction}
-                        onThreadReply={handleThreadReply}
-                        onDelete={deleteMessage}
-                      />
-                    )}
-                  </div>
-
-                  {/* Message Input */}
-                  {!isAIAvatarView && (
-                    <div className="p-4 border-t bg-white">
-                      <MessageInput
-                        onSendMessage={sendMessage}
-                        currentUser={user}
-                      />
-                    </div>
-                  )}
+            {!selectedChannel ? (
+              <div className="flex-1 flex items-center justify-center bg-white">
+                <div className="text-center max-w-2xl mx-auto px-4">
+                  <h1 className="text-4xl font-bold mb-6 text-gray-800">Welcome to Chat Genius AI</h1>
+                  <p className="text-xl text-gray-600 mb-4">Your intelligent chat companion</p>
+                  <p className="text-gray-500">Select a channel from the sidebar to start chatting or create a new one to begin your conversation.</p>
                 </div>
-
-                {/* Thread Panel */}
-                {activeThread && (
-                  <div className="w-5/12">
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 flex">
+                  <div className={`flex-1 flex flex-col ${activeThread ? 'border-r' : ''}`}>
+                    <div className="bg-white border-b px-4 py-2">
+                      <h2 className="text-xl font-semibold">#{selectedChannel.name}</h2>
+                    </div>
+                    <MessageList
+                      messages={messages.filter(msg => !msg.parentMessageId)}
+                      onReactionAdd={addReaction}
+                      onThreadReply={handleThreadReply}
+                      onDelete={deleteMessage}
+                    />
+                    <MessageInput
+                      onSendMessage={(content, userId, username, fileAttachment) =>
+                        sendMessage(content, userId, username, fileAttachment)
+                      }
+                      currentUser={user}
+                    />
+                  </div>
+                  {activeThread && (
                     <Thread
                       parentMessage={activeThread}
                       threadMessages={threadMessages}
                       onClose={() => setActiveThread(null)}
-                      onSendMessage={handleThreadMessageSend}
+                      onSendMessage={(content, userId, username, fileAttachment) =>
+                        handleThreadMessageSend(content, userId, username, fileAttachment)
+                      }
                       onReactionAdd={addReaction}
                       onDelete={deleteMessage}
                       currentUser={user}
-                      onParentMessageUpdate={(updatedMessage) => {
-                        setActiveThread(updatedMessage);
-                      }}
                     />
-                  </div>
-                )}
-              </div>
-            </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </main>
