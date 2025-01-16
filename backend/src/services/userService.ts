@@ -54,9 +54,9 @@ export const userService = {
 
       // Only update if there are actual changes
       if (!existingUser || 
-          userData.email !== null || 
-          userData.displayName !== null || 
-          userData.photoURL !== null) {
+          (userData.email !== null && userData.email !== existingUser.email) || 
+          (userData.displayName !== null && userData.displayName !== existingUser.displayName) || 
+          (userData.photoURL !== null && userData.photoURL !== existingUser.photoURL)) {
         const command = new PutCommand({
           TableName: TABLE_NAME,
           Item: user,
