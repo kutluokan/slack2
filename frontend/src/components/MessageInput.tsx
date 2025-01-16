@@ -26,6 +26,12 @@ interface MessageInputProps {
   };
 }
 
+interface UploadResponse {
+  uploadUrl: string;
+  fileUrl: string;
+  key: string;
+}
+
 export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) => {
   const [inputValue, setInputValue] = useState('');
   const [showMentions, setShowMentions] = useState(false);
@@ -107,6 +113,16 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (100MB limit)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert('File size exceeds maximum limit of 100MB');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     setIsUploading(true);
     try {
       // Request upload URL
@@ -116,19 +132,39 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
         fileSize: file.size
       });
 
-      // Wait for the upload URL
-      const uploadData = await new Promise<{ uploadUrl: string; fileUrl: string; key: string }>((resolve, reject) => {
-        socket.once('upload_url_generated', resolve);
-        socket.once('error', reject);
-      });
+      // Wait for the upload URL with timeout
+      const uploadData = await Promise.race<UploadResponse>([
+        new Promise<UploadResponse>((resolve, reject) => {
+          socket.once('upload_url_generated', resolve);
+          socket.once('error', reject);
+        }),
+        new Promise<UploadResponse>((_, reject) => 
+          setTimeout(() => reject(new Error('Upload URL request timed out')), 10000)
+        )
+      ]);
 
-      // Upload the file
-      await fetch(uploadData.uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type
-        }
+      // Upload the file with progress tracking
+      const xhr = new XMLHttpRequest();
+      await new Promise<void>((resolve, reject) => {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const progress = (event.loaded / event.total) * 100;
+            console.log(`Upload progress: ${progress.toFixed(2)}%`);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status: ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Upload failed'));
+        xhr.open('PUT', uploadData.uploadUrl);
+        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.send(file);
       });
 
       // Send message with file attachment
@@ -146,7 +182,7 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
       );
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Failed to upload file. Please try again.');
+      alert(`Failed to upload file: ${(error as Error).message}`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
