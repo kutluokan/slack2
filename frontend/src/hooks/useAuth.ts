@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
@@ -18,6 +18,7 @@ interface SyncedUser {
 export const useAuth = () => {
   const dispatch = useDispatch();
   const { user, loading, error } = useSelector((state: RootState) => state.auth);
+  const [initialAuthCheckDone, setInitialAuthCheckDone] = useState(false);
 
   const syncUserWithBackend = useCallback((firebaseUser: FirebaseUser) => {
     if (!firebaseUser) return;
@@ -44,15 +45,24 @@ export const useAuth = () => {
   }, []);
 
   useEffect(() => {
-    dispatch(setLoading(true));
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    // Set initial loading state
+    if (!initialAuthCheckDone) {
+      dispatch(setLoading(true));
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         syncUserWithBackend(firebaseUser);
       } else {
         socket.disconnect();
       }
       dispatch(setUser(firebaseUser));
-      dispatch(setLoading(false));
+      
+      // Only set loading to false after initial auth check
+      if (!initialAuthCheckDone) {
+        setInitialAuthCheckDone(true);
+        dispatch(setLoading(false));
+      }
     });
 
     return () => {
@@ -60,19 +70,18 @@ export const useAuth = () => {
       socket.off('connect');
       socket.off('user_synced');
     };
-  }, [dispatch, syncUserWithBackend]);
+  }, [dispatch, syncUserWithBackend, initialAuthCheckDone]);
 
   const signInWithGoogle = useCallback(async () => {
     try {
       dispatch(setLoading(true));
-      const result = await signInWithPopup(auth, googleProvider);
-      syncUserWithBackend(result.user);
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
       dispatch(setError((error as Error).message));
     } finally {
       dispatch(setLoading(false));
     }
-  }, [dispatch, syncUserWithBackend]);
+  }, [dispatch]);
 
   const logout = useCallback(async () => {
     try {
@@ -88,7 +97,7 @@ export const useAuth = () => {
 
   return {
     user,
-    loading,
+    loading: loading || !initialAuthCheckDone,
     error,
     signInWithGoogle,
     logout,

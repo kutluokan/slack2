@@ -23,8 +23,9 @@ interface Channel {
 }
 
 export default function Home() {
-  const { user, loading, error, signInWithGoogle, logout } = useAuth();
+  const { user, loading: authLoading, error, signInWithGoogle, logout } = useAuth();
   const [selectedChannel, setSelectedChannel] = useState<{ id: string; name: string } | null>(null);
+  const [channelLoading, setChannelLoading] = useState(true);
   const { messages, sendMessage, addReaction, deleteMessage } = useMessages(selectedChannel?.id || '');
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
   const [isAIAvatarView, setIsAIAvatarView] = useState(false);
@@ -33,6 +34,7 @@ export default function Home() {
   // Load saved channel on initial render and after login
   useEffect(() => {
     if (user) {
+      setChannelLoading(true);
       const savedChannel = localStorage.getItem('selectedChannel');
       try {
         if (savedChannel) {
@@ -49,10 +51,12 @@ export default function Home() {
                 localStorage.removeItem('selectedChannel');
                 setSelectedChannel(null);
               }
+              setChannelLoading(false);
             });
           } else {
             localStorage.removeItem('selectedChannel');
             setSelectedChannel(null);
+            setChannelLoading(false);
           }
         } else {
           // No saved channel, try to select first available
@@ -65,17 +69,19 @@ export default function Home() {
             } else {
               setSelectedChannel(null);
             }
+            setChannelLoading(false);
           });
         }
       } catch (error) {
         console.error('Error loading saved channel:', error);
         localStorage.removeItem('selectedChannel');
         setSelectedChannel(null);
+        setChannelLoading(false);
       }
     } else {
-      // Clear selection when logged out
       setSelectedChannel(null);
       localStorage.removeItem('selectedChannel');
+      setChannelLoading(false);
     }
   }, [user]);
 
@@ -210,7 +216,7 @@ export default function Home() {
     ? messages.filter(msg => msg.parentMessageId === activeThread.messageId)
     : [];
 
-  if (loading) {
+  if (authLoading || (user && channelLoading)) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-xl">Loading...</div>
