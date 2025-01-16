@@ -7,6 +7,7 @@ import { MessageList } from '../components/MessageList';
 import { useMessages } from '../hooks/useMessages';
 import { AIAvatarList } from '../components/AIAvatarList';
 import { MessageInput } from '../components/MessageInput';
+import { PresenceIndicator } from '../components/PresenceIndicator';
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
@@ -134,6 +135,7 @@ export default function Home() {
               <div className="mt-2 text-sm text-gray-300">
                 {user.email ?? ''}
               </div>
+              {user && <PresenceIndicator userId={user.uid} />}
               <ChannelsList 
                 user={{
                   uid: user.uid,
