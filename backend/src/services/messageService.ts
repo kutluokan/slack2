@@ -11,6 +11,7 @@ export interface Message {
   userId: string;
   content: string;
   username: string;
+  channelName?: string;
   reactions?: { [key: string]: string[] };
   isAIResponse?: boolean;
   fileAttachment?: {

@@ -7,13 +7,15 @@ interface SearchResult {
   messageId: string;
   channelId: string;
   content: string;
-  timestamp: number;
   username: string;
+  timestamp: number;
+  channelName?: string;
   fileAttachment?: {
     fileName: string;
     fileType: string;
     fileSize: number;
     fileUrl: string;
+    s3Key: string;
   };
 }
 
@@ -147,6 +149,10 @@ export const SearchBar = ({ onResultSelect }: SearchBarProps) => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
+                      <div className="text-xs text-gray-400 mb-1">
+                        {result.channelId.startsWith('dm_') ? '@' : '#'}
+                        {result.channelName || result.channelId}
+                      </div>
                       <div className="text-sm text-gray-300">
                         {highlightMatch(result.content)}
                       </div>

@@ -257,7 +257,7 @@ io.on('connection', (socket) => {
 
   socket.on('search_messages', async ({ query }) => {
     try {
-      const results = await searchService.searchMessages(query);
+      const results = await searchService.searchMessages(query, socket.data.userId);
       socket.emit('search_results', results);
     } catch (error) {
       console.error('Error searching messages:', error);

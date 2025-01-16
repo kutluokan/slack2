@@ -90,11 +90,12 @@ export default function Home() {
     channelId: string;
     messageId: string;
     content: string;
+    channelName?: string;
   }) => {
     // Switch to the channel containing the message
     handleChannelChange({
       id: result.channelId,
-      name: result.channelId.startsWith('dm_') ? result.channelId : 'general'
+      name: result.channelName || result.channelId
     });
 
     // Wait for messages to load, then scroll to the message
