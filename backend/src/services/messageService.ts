@@ -41,7 +41,7 @@ export const messageService = {
         isAIResponse: message.isAIResponse || false,
         fileAttachment: message.fileAttachment || undefined,
         parentMessageId: message.parentMessageId || undefined,
-        threadMessageCount: message.threadMessageCount || 0,
+        ...(message.threadMessageCount !== undefined && { threadMessageCount: message.threadMessageCount }),
       },
     });
 

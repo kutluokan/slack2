@@ -23,6 +23,7 @@ interface ThreadProps {
     displayName?: string | null;
     email: string | null;
   };
+  onParentMessageUpdate?: (updatedMessage: MessageType) => void;
 }
 
 interface ThreadMessagesPayload {
@@ -37,7 +38,8 @@ export const Thread = ({
   onSendMessage,
   onReactionAdd,
   onDelete,
-  currentUser
+  currentUser,
+  onParentMessageUpdate
 }: ThreadProps) => {
   useEffect(() => {
     if (parentMessage) {
@@ -50,8 +52,17 @@ export const Thread = ({
         console.log('Received thread messages:', messages);
       });
 
+      // Listen for parent message updates
+      socket.on('message_updated', (updatedMessage: MessageType) => {
+        if (updatedMessage.messageId === parentMessage.messageId) {
+          // Update the parent message in the parent component
+          onParentMessageUpdate?.(updatedMessage);
+        }
+      });
+
       return () => {
         socket.off('thread_messages');
+        socket.off('message_updated');
       };
     }
   }, [parentMessage]);

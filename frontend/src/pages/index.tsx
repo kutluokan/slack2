@@ -11,6 +11,16 @@ import { PresenceIndicator } from '../components/PresenceIndicator';
 import { SearchBar } from '../components/SearchBar';
 import { Thread } from '../components/Thread';
 import type { Message as MessageType } from '../hooks/useMessages';
+import { socket } from '../config/socket';
+
+interface Channel {
+  channelId: string;
+  name: string;
+  createdBy: string;
+  createdAt: number;
+  isDM?: boolean;
+  participants?: string[];
+}
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
@@ -37,9 +47,15 @@ export default function Home() {
 
   useEffect(() => {
     if (!selectedChannel) {
-      const defaultChannel = { id: 'general', name: 'general' };
-      setSelectedChannel(defaultChannel);
-      localStorage.setItem('selectedChannel', JSON.stringify(defaultChannel));
+      // Get channels and select either last visited or first available
+      socket.emit('get_channels');
+      socket.once('channels', (channels: Channel[]) => {
+        if (channels && channels.length > 0) {
+          const newChannel = { id: channels[0].channelId, name: channels[0].name };
+          setSelectedChannel(newChannel);
+          localStorage.setItem('selectedChannel', JSON.stringify(newChannel));
+        }
+      });
     }
   }, [selectedChannel]);
 
@@ -66,10 +82,16 @@ export default function Home() {
 
   const handleChannelChange = (channel: { id: string; name: string } | null) => {
     if (!channel) {
-      const defaultChannel = { id: 'general', name: 'general' };
-      setSelectedChannel(defaultChannel);
-      localStorage.setItem('selectedChannel', JSON.stringify(defaultChannel));
-      setIsAIAvatarView(false);
+      // Get channels and select either last visited or first available
+      socket.emit('get_channels');
+      socket.once('channels', (channels: Channel[]) => {
+        if (channels && channels.length > 0) {
+          const newChannel = { id: channels[0].channelId, name: channels[0].name };
+          setSelectedChannel(newChannel);
+          localStorage.setItem('selectedChannel', JSON.stringify(newChannel));
+          setIsAIAvatarView(false);
+        }
+      });
       return;
     }
 
@@ -275,6 +297,9 @@ export default function Home() {
                       onReactionAdd={addReaction}
                       onDelete={deleteMessage}
                       currentUser={user}
+                      onParentMessageUpdate={(updatedMessage) => {
+                        setActiveThread(updatedMessage);
+                      }}
                     />
                   </div>
                 )}

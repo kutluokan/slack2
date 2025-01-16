@@ -76,13 +76,20 @@ io.on('connection', (socket) => {
       // Broadcast the message to all clients in the channel
       io.to(data.channelId).emit('message', savedMessage);
 
-      // If this is a thread reply, also emit a thread_updated event
+      // If this is a thread reply, also emit a thread_updated event and update parent message
       if (savedMessage.parentMessageId) {
         const threadMessages = await messageService.getThreadMessages(savedMessage.parentMessageId);
+        const parentMessage = await messageService.getMessage(savedMessage.parentMessageId);
+        
         io.to(data.channelId).emit('thread_updated', {
           parentMessageId: savedMessage.parentMessageId,
           messages: threadMessages
         });
+
+        // Emit parent message update to update thread count in real-time
+        if (parentMessage) {
+          io.to(data.channelId).emit('message_updated', parentMessage);
+        }
       }
 
       // Check if message mentions @AI Assistant

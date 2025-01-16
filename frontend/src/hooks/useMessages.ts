@@ -81,12 +81,19 @@ export const useMessages = (channelId: string) => {
         }));
       });
 
+      socket.on('message_updated', (updatedMessage: Message) => {
+        setMessages(prev => prev.map(msg => 
+          msg.messageId === updatedMessage.messageId ? updatedMessage : msg
+        ));
+      });
+
       return () => {
         socket.off('messages');
         socket.off('message');
         socket.off('reaction_added');
         socket.off('message_deleted');
         socket.off('thread_updated');
+        socket.off('message_updated');
         if (channelId) {
           socket.emit('leave_channel', channelId);
         }
