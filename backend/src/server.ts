@@ -76,6 +76,15 @@ io.on('connection', (socket) => {
       // Broadcast the message to all clients in the channel
       io.to(data.channelId).emit('message', savedMessage);
 
+      // If this is a thread reply, also emit a thread_updated event
+      if (savedMessage.parentMessageId) {
+        const threadMessages = await messageService.getThreadMessages(savedMessage.parentMessageId);
+        io.to(data.channelId).emit('thread_updated', {
+          parentMessageId: savedMessage.parentMessageId,
+          messages: threadMessages
+        });
+      }
+
       // Check if message mentions @AI Assistant
       const mentionRegex = /@AI/;
       if (mentionRegex.test(data.content)) {
@@ -174,8 +183,18 @@ io.on('connection', (socket) => {
         throw new Error('Invalid message ID format');
       }
 
+      const message = await messageService.getMessage(messageId);
       await messageService.deleteMessage(messageId);
       io.to(channelId).emit('message_deleted', messageId);
+
+      // If this was a thread message, update the thread
+      if (message?.parentMessageId) {
+        const threadMessages = await messageService.getThreadMessages(message.parentMessageId);
+        io.to(channelId).emit('thread_updated', {
+          parentMessageId: message.parentMessageId,
+          messages: threadMessages
+        });
+      }
     } catch (error) {
       console.error('Error deleting message:', error);
       socket.emit('error', 'Failed to delete message');
@@ -262,6 +281,19 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error searching messages:', error);
       socket.emit('error', 'Failed to search messages');
+    }
+  });
+
+  socket.on('get_thread_messages', async (parentMessageId: string) => {
+    try {
+      const messages = await messageService.getThreadMessages(parentMessageId);
+      socket.emit('thread_messages', {
+        parentMessageId,
+        messages
+      });
+    } catch (error) {
+      console.error('Error fetching thread messages:', error);
+      socket.emit('error', 'Failed to fetch thread messages');
     }
   });
 

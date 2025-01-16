@@ -23,14 +23,6 @@ export const MessageGroup = ({ messages, onDelete, onReactionAdd, onThreadReply 
           onDelete={onDelete}
         />
       ))}
-      <div className="hidden group-hover:flex items-center gap-2 mt-1 ml-1">
-        <button className="text-xs text-gray-500 hover:text-gray-700">
-          Reply
-        </button>
-        <button className="text-xs text-gray-500 hover:text-gray-700">
-          React
-        </button>
-      </div>
     </div>
   );
 }; 

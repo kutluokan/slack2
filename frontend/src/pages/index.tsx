@@ -9,6 +9,8 @@ import { AIAvatarList } from '../components/AIAvatarList';
 import { MessageInput } from '../components/MessageInput';
 import { PresenceIndicator } from '../components/PresenceIndicator';
 import { SearchBar } from '../components/SearchBar';
+import { Thread } from '../components/Thread';
+import type { Message as MessageType } from '../hooks/useMessages';
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
@@ -31,6 +33,7 @@ export default function Home() {
   const { messages, sendMessage, addReaction, deleteMessage } = useMessages(selectedChannel?.id || '');
   const [selectedAIUser, setSelectedAIUser] = useState<string | null>(null);
   const [isAIAvatarView, setIsAIAvatarView] = useState(false);
+  const [activeThread, setActiveThread] = useState<MessageType | null>(null);
 
   useEffect(() => {
     if (!selectedChannel) {
@@ -110,6 +113,35 @@ export default function Home() {
       }
     }, 500);
   };
+
+  const handleThreadReply = (messageId: string) => {
+    const parentMessage = messages.find(msg => msg.messageId === messageId);
+    if (parentMessage) {
+      setActiveThread(parentMessage);
+    }
+  };
+
+  const handleThreadMessageSend = (
+    content: string,
+    userId: string,
+    username: string,
+    fileAttachment?: {
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      fileUrl: string;
+      s3Key: string;
+    }
+  ) => {
+    if (activeThread) {
+      sendMessage(content, userId, username, fileAttachment, activeThread.messageId);
+    }
+  };
+
+  // Filter thread messages
+  const threadMessages = activeThread
+    ? messages.filter(msg => msg.parentMessageId === activeThread.messageId)
+    : [];
 
   if (loading) {
     return (
@@ -200,35 +232,54 @@ export default function Home() {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {isAIAvatarView ? (
-                <div className="flex flex-col items-center justify-center h-full">
-                  <div id="did-host" className="w-full h-full"></div>
-                  <div className="text-center mt-4 text-gray-600">
-                    Welcome to Kay&apos;s AI Avatar! This is a dedicated space for interacting with the D-ID powered AI avatar.
+            <div className="flex-1 overflow-hidden">
+              <div className={`flex h-full ${activeThread ? 'divide-x' : ''}`}>
+                <div className={`flex-1 flex flex-col ${activeThread ? 'w-7/12' : 'w-full'}`}>
+                  <div className="flex-1 overflow-y-auto p-6">
+                    {isAIAvatarView ? (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <div id="did-host" className="w-full h-full"></div>
+                        <div className="text-center mt-4 text-gray-600">
+                          Welcome to Kay&apos;s AI Avatar! This is a dedicated space for interacting with the D-ID powered AI avatar.
+                        </div>
+                      </div>
+                    ) : (
+                      <MessageList
+                        messages={messages.filter(msg => !msg.parentMessageId)} // Only show non-thread messages
+                        onReactionAdd={addReaction}
+                        onThreadReply={handleThreadReply}
+                        onDelete={deleteMessage}
+                      />
+                    )}
                   </div>
-                </div>
-              ) : (
-                <MessageList
-                  messages={messages}
-                  onReactionAdd={addReaction}
-                  onThreadReply={(messageId) => {
-                    console.log('Thread reply to:', messageId);
-                  }}
-                  onDelete={deleteMessage}
-                />
-              )}
-            </div>
 
-            {/* Message Input */}
-            {!isAIAvatarView && (
-              <div className="p-4 border-t bg-white">
-                <MessageInput
-                  onSendMessage={sendMessage}
-                  currentUser={user}
-                />
+                  {/* Message Input */}
+                  {!isAIAvatarView && (
+                    <div className="p-4 border-t bg-white">
+                      <MessageInput
+                        onSendMessage={sendMessage}
+                        currentUser={user}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Thread Panel */}
+                {activeThread && (
+                  <div className="w-5/12">
+                    <Thread
+                      parentMessage={activeThread}
+                      threadMessages={threadMessages}
+                      onClose={() => setActiveThread(null)}
+                      onSendMessage={handleThreadMessageSend}
+                      onReactionAdd={addReaction}
+                      onDelete={deleteMessage}
+                      currentUser={user}
+                    />
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </main>

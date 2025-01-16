@@ -10,6 +10,7 @@ export interface Message {
   username: string;
   reactions?: { [key: string]: string[] };
   parentMessageId?: string;
+  threadMessageCount?: number;
   fileAttachment?: {
     fileName: string;
     fileType: string;
@@ -24,6 +25,11 @@ interface ReactionPayload {
   emoji: string;
   userId: string;
   reactions: { [key: string]: string[] };
+}
+
+interface ThreadUpdatePayload {
+  parentMessageId: string;
+  messages: Message[];
 }
 
 export const useMessages = (channelId: string) => {
@@ -58,11 +64,29 @@ export const useMessages = (channelId: string) => {
         setMessages(prev => prev.filter(msg => msg.messageId !== messageId));
       });
 
+      socket.on('thread_updated', ({ parentMessageId, messages: threadMessages }: ThreadUpdatePayload) => {
+        setMessages(prev => prev.map(msg => {
+          if (msg.messageId === parentMessageId) {
+            return {
+              ...msg,
+              threadMessageCount: threadMessages.length
+            };
+          }
+          if (msg.parentMessageId === parentMessageId) {
+            // Find the updated version of this message
+            const updatedMessage = threadMessages.find(m => m.messageId === msg.messageId);
+            return updatedMessage || msg;
+          }
+          return msg;
+        }));
+      });
+
       return () => {
         socket.off('messages');
         socket.off('message');
         socket.off('reaction_added');
         socket.off('message_deleted');
+        socket.off('thread_updated');
         if (channelId) {
           socket.emit('leave_channel', channelId);
         }
@@ -82,7 +106,8 @@ export const useMessages = (channelId: string) => {
       fileSize: number;
       fileUrl: string;
       s3Key: string;
-    }
+    },
+    parentMessageId?: string
   ) => {
     if (!channelId) return;
 
@@ -91,7 +116,8 @@ export const useMessages = (channelId: string) => {
       userId,
       content,
       username,
-      fileAttachment
+      fileAttachment,
+      parentMessageId
     };
 
     if (fileAttachment) {
@@ -118,5 +144,9 @@ export const useMessages = (channelId: string) => {
     socket.emit('delete_message', { messageId });
   };
 
-  return { messages, sendMessage, addReaction, deleteMessage };
+  const getThreadMessages = (parentMessageId: string) => {
+    socket.emit('get_thread_messages', parentMessageId);
+  };
+
+  return { messages, sendMessage, addReaction, deleteMessage, getThreadMessages };
 }; 

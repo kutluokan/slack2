@@ -14,6 +14,8 @@ export interface Message {
   channelName?: string;
   reactions?: { [key: string]: string[] };
   isAIResponse?: boolean;
+  parentMessageId?: string;
+  threadMessageCount?: number;
   fileAttachment?: {
     fileName: string;
     fileType: string;
@@ -38,11 +40,34 @@ export const messageService = {
         reactions: {},
         isAIResponse: message.isAIResponse || false,
         fileAttachment: message.fileAttachment || undefined,
+        parentMessageId: message.parentMessageId || undefined,
+        threadMessageCount: message.threadMessageCount || 0,
       },
     });
 
     await docClient.send(command);
+
+    // If this is a thread reply, update the parent message's thread count
+    if (message.parentMessageId) {
+      await this.incrementThreadMessageCount(message.parentMessageId);
+    }
+
     return { ...message, messageId };
+  },
+
+  async incrementThreadMessageCount(messageId: string) {
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { messageId },
+      UpdateExpression: 'SET threadMessageCount = if_not_exists(threadMessageCount, :zero) + :one',
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':one': 1
+      },
+      ReturnValues: 'ALL_NEW'
+    });
+
+    await docClient.send(command);
   },
 
   async getChannelMessages(channelId: string) {
@@ -55,6 +80,21 @@ export const messageService = {
       },
       ScanIndexForward: false,
       Limit: 50,
+    });
+
+    const response = await docClient.send(command);
+    return response.Items as Message[];
+  },
+
+  async getThreadMessages(parentMessageId: string) {
+    const command = new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: "ThreadIndex",
+      KeyConditionExpression: "parentMessageId = :parentMessageId",
+      ExpressionAttributeValues: {
+        ":parentMessageId": parentMessageId,
+      },
+      ScanIndexForward: true,
     });
 
     const response = await docClient.send(command);
