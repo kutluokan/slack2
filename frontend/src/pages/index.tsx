@@ -8,6 +8,7 @@ import { useMessages } from '../hooks/useMessages';
 import { AIAvatarList } from '../components/AIAvatarList';
 import { MessageInput } from '../components/MessageInput';
 import { PresenceIndicator } from '../components/PresenceIndicator';
+import { SearchBar } from '../components/SearchBar';
 
 export default function Home() {
   const { user, loading, error, signInWithGoogle, logout } = useAuth();
@@ -85,6 +86,30 @@ export default function Home() {
     setIsAIAvatarView(true);
   };
 
+  const handleSearchResultSelect = (result: {
+    channelId: string;
+    messageId: string;
+    content: string;
+  }) => {
+    // Switch to the channel containing the message
+    handleChannelChange({
+      id: result.channelId,
+      name: result.channelId.startsWith('dm_') ? result.channelId : 'general'
+    });
+
+    // Wait for messages to load, then scroll to the message
+    setTimeout(() => {
+      const messageElement = document.getElementById(result.messageId);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth' });
+        messageElement.classList.add('bg-yellow-100', 'dark:bg-yellow-900');
+        setTimeout(() => {
+          messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900');
+        }, 2000);
+      }
+    }, 500);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -136,6 +161,12 @@ export default function Home() {
                 {user.email ?? ''}
               </div>
               {user && <PresenceIndicator userId={user.uid} />}
+              
+              {/* Add SearchBar component */}
+              <div className="mt-4">
+                <SearchBar onResultSelect={handleSearchResultSelect} />
+              </div>
+
               <ChannelsList 
                 user={{
                   uid: user.uid,

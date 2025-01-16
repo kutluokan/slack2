@@ -31,7 +31,8 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
 
   return (
     <div 
-      className="group px-4 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
+      id={message.messageId}
+      className="group px-4 py-1 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >

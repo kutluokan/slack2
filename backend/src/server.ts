@@ -7,6 +7,7 @@ import { messageService, Message } from './services/messageService';
 import { channelService } from './services/channelService';
 import { userService } from './services/userService';
 import { s3Service } from './services/s3Service';
+import { searchService } from './services/searchService';
 
 dotenv.config();
 
@@ -251,6 +252,16 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error saving message with file:', error);
       socket.emit('error', 'Failed to save message with file');
+    }
+  });
+
+  socket.on('search_messages', async ({ query }) => {
+    try {
+      const results = await searchService.searchMessages(query);
+      socket.emit('search_results', results);
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      socket.emit('error', 'Failed to search messages');
     }
   });
 
