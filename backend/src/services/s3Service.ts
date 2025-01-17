@@ -3,6 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -64,6 +65,26 @@ export const s3Service = {
         try {
           await fs.promises.writeFile(localPath, fileUpload.fileContent);
           console.log(`File saved locally at: ${localPath}`);
+          
+          // Process file with RAG service
+          try {
+            const formData = new FormData();
+            formData.append('file', new Blob([fileUpload.fileContent], { type: fileUpload.fileType }), sanitizedFileName);
+            
+            const ragResponse = await axios.post(
+              `${process.env.RAG_UPLOAD_URL}/process`,
+              formData,
+              {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              }
+            );
+            console.log('RAG processing response:', ragResponse.data);
+          } catch (ragError) {
+            console.error('Error processing file with RAG service:', ragError);
+            // Don't throw here, as we still want to continue with S3 upload
+          }
         } catch (writeError) {
           console.error('Error writing file locally:', writeError);
           throw new Error(`Failed to save file locally: ${(writeError as Error).message}`);

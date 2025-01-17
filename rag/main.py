@@ -126,7 +126,7 @@ async def get_rag_response(prompt: str, chat_history: List[Dict[str, str]] = Non
         
         # Get response from LLM
         logger.info("Initializing ChatOpenAI")
-        llm = ChatOpenAI(temperature=0.7, model_name="gpt-4o-mini")
+        llm = ChatOpenAI(temperature=0.7, model_name="gpt-4")
         logger.info("Generating response from LLM")
         response = llm.invoke(prompt_with_context)
         

@@ -8,7 +8,7 @@ if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY is required in environment variables');
 }
 
-const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://rag_app:8001';
+const RAG_SERVICE_URL = process.env.RAG_QUERY_URL || 'http://rag_query:8001';
 console.log(`RAG service URL: ${RAG_SERVICE_URL}`);
 
 interface ChatMessage {

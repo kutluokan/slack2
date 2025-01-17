@@ -391,7 +391,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     });
 
     try {
-      const ragServiceUrl = process.env.RAG_SERVICE_URL || 'http://rag_app:8001';
+      const ragServiceUrl = process.env.RAG_UPLOAD_URL || 'http://rag_upload:8000';
       const ragResponse = await fetch(`${ragServiceUrl}/process`, {
         method: 'POST',
         body: formData,
