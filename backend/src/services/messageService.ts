@@ -11,6 +11,7 @@ export interface Message {
   userId: string;
   content: string;
   username: string;
+  photoURL?: string;
   channelName?: string;
   reactions?: { [key: string]: string[] };
   isAIResponse?: boolean;
@@ -37,6 +38,7 @@ export const messageService = {
         userId: message.userId,
         content: message.content,
         username: message.username,
+        photoURL: message.photoURL,
         reactions: {},
         isAIResponse: message.isAIResponse || false,
         fileAttachment: message.fileAttachment || undefined,
@@ -86,9 +88,10 @@ export const messageService = {
           "#content": "content",
           "#uid": "userId",
           "#uname": "username",
-          "#isAI": "isAIResponse"
+          "#isAI": "isAIResponse",
+          "#photo": "photoURL"
         },
-        ProjectionExpression: "messageId, channelId, #ts, #uid, #content, #uname, #isAI, reactions",
+        ProjectionExpression: "messageId, channelId, #ts, #uid, #content, #uname, #isAI, #photo, reactions",
         ScanIndexForward: false,  // Get newest messages first
         Limit: 100  // Increased limit for better context
       });

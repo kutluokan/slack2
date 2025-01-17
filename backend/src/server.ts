@@ -103,10 +103,14 @@ io.on('connection', (socket) => {
 
   socket.on('message', async (data: Message) => {
     try {
+      // Get user data to include photo URL
+      const user = await userService.getUser(data.userId);
+      
       // Save message to DynamoDB
       const savedMessage = await messageService.createMessage({
         ...data,
         timestamp: Date.now(),
+        photoURL: user?.photoURL,
       });
 
       // Broadcast the message to all clients in the channel
@@ -303,10 +307,14 @@ io.on('connection', (socket) => {
 
   socket.on('message_with_file', async (data: Message) => {
     try {
+      // Get user data to include photo URL
+      const user = await userService.getUser(data.userId);
+      
       // Save message to DynamoDB
       const savedMessage = await messageService.createMessage({
         ...data,
         timestamp: Date.now(),
+        photoURL: user?.photoURL,
       });
 
       // Broadcast the message to all clients in the channel

@@ -254,7 +254,7 @@ export default function Home() {
           {/* Sidebar - Always visible */}
           <div className="w-64 bg-gray-800 text-white p-4 flex flex-col h-full">
             <div 
-              onClick={() => handleChannelChange(null)}
+              onClick={() => setSelectedChannel(null)}
               className="text-xl font-bold mb-4 cursor-pointer hover:text-gray-300 transition-colors text-center"
             >
               Chat Genius AI

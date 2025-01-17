@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FaTrash, FaDownload } from 'react-icons/fa';
+import Image from 'next/image';
 import type { Message as MessageType } from '../hooks/useMessages';
 
 interface MessageProps {
@@ -37,7 +38,16 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
       onMouseLeave={() => setShowActions(false)}
     >
       {!isGrouped && (
-        <div className="flex items-baseline mb-1">
+        <div className="flex items-center mb-1">
+          {message.photoURL && (
+            <Image
+              src={message.photoURL}
+              alt={message.username}
+              width={24}
+              height={24}
+              className="rounded-full mr-2"
+            />
+          )}
           <span className="font-bold mr-2">{message.username}</span>
           <span className="text-xs text-gray-500">
             {formatTime(message.timestamp)}

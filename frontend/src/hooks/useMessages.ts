@@ -8,6 +8,7 @@ export interface Message {
   userId: string;
   content: string;
   username: string;
+  photoURL?: string;
   reactions?: { [key: string]: string[] };
   parentMessageId?: string;
   threadMessageCount?: number;

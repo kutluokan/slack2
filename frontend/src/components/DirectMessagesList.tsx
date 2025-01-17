@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { socket } from '../config/socket';
 import { FaCircle } from 'react-icons/fa';
 import { getDatabase, ref, onValue, off } from 'firebase/database';
+import Image from 'next/image';
 
 interface User {
   userId: string;
@@ -101,7 +102,18 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
                 selectedChannelId === `dm_${[currentUser.uid, user.userId].sort().join('_')}` ? 'bg-gray-700' : ''
               }`}
             >
-              <FaCircle className={`w-2 h-2 ${getStatusColor(user.userId)}`} />
+              <div className="relative">
+                {user.photoURL && (
+                  <Image
+                    src={user.photoURL}
+                    alt={user.displayName || user.email}
+                    width={24}
+                    height={24}
+                    className="rounded-full"
+                  />
+                )}
+                <FaCircle className={`w-2 h-2 ${getStatusColor(user.userId)} absolute bottom-0 right-0`} />
+              </div>
               <span>{user.displayName || user.email}</span>
             </li>
           );
