@@ -132,12 +132,15 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Check if message mentions @AI Assistant
-      const mentionRegex = /@AI/;
-      if (mentionRegex.test(data.content)) {
-        // Get channel messages for context
-        const messages = await messageService.getChannelMessages(data.channelId);
-        
+      // Get channel messages for context
+      const messages = await messageService.getChannelMessages(data.channelId);
+
+      // Check if this is a DM with Elon or mentions Elon/AI in a channel
+      const isDMWithElon = data.channelId.startsWith('dm_') && data.channelId.includes('elon-musk-ai');
+      const mentionsElon = !data.channelId.startsWith('dm_') && data.content.toLowerCase().includes('@elon');
+      const mentionsAI = data.content.toLowerCase().includes('@ai');
+
+      if (isDMWithElon || mentionsElon || mentionsAI) {
         // Generate and save AI response
         const aiResponse = await messageService.handleAIInteraction(
           data.channelId,
@@ -149,8 +152,8 @@ io.on('connection', (socket) => {
         io.to(data.channelId).emit('message', aiResponse);
       }
     } catch (error) {
-      console.error('Error saving message:', error);
-      socket.emit('error', 'Failed to save message');
+      console.error('Error handling message:', error);
+      socket.emit('error', 'Failed to process message');
     }
   });
 

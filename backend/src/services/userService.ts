@@ -13,6 +13,16 @@ const AI_USER = {
   lastLogin: Date.now(),
 };
 
+const ELON_AI_USER = {
+  userId: 'elon-musk-ai',
+  email: 'elon@ai.local',
+  displayName: 'Elon Musk',
+  photoURL: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Elon_Musk_Royal_Society_crop.jpg/800px-Elon_Musk_Royal_Society_crop.jpg',
+  isSystemUser: true,
+  createdAt: Date.now(),
+  lastLogin: Date.now(),
+};
+
 export interface User {
   userId: string;
   email: string;
@@ -111,8 +121,8 @@ export const userService = {
       const response = await docClient.send(command);
       const users = response.Items as User[];
       
-      // Add AI user to the list of mentionable users
-      return [AI_USER, ...users];
+      // Add AI users to the list of mentionable users
+      return [AI_USER, ELON_AI_USER, ...users];
     } catch (error) {
       console.error('Error in getMentionableUsers:', error);
       throw new Error(`Failed to get mentionable users: ${(error as Error).message}`);

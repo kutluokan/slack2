@@ -9,6 +9,7 @@ interface User {
   email: string;
   displayName?: string;
   photoURL?: string;
+  isSystemUser?: boolean;
 }
 
 interface DirectMessagesListProps {
@@ -23,10 +24,12 @@ interface DirectMessagesListProps {
 export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChannelId }: DirectMessagesListProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [presenceStatuses, setPresenceStatuses] = useState<{[key: string]: {status: string}}>({});
+  const [isSelectingUser, setIsSelectingUser] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (currentUser?.uid) {
-      socket.emit('get_users');
+      socket.emit('get_mentionable_users');
 
       const handleUsers = (userList: User[]) => {
         // Filter out current user from the list
@@ -37,27 +40,38 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
         // Set up presence listeners for each user
         const db = getDatabase();
         filteredUsers.forEach(user => {
-          const userPresenceRef = ref(db, `presence/${user.userId}`);
-          onValue(userPresenceRef, (snapshot) => {
-            const presenceData = snapshot.val();
-            console.log(`Presence update for ${user.userId}:`, presenceData);
+          // Only set up presence for non-AI users
+          if (!user.isSystemUser) {
+            const userPresenceRef = ref(db, `presence/${user.userId}`);
+            onValue(userPresenceRef, (snapshot) => {
+              const presenceData = snapshot.val();
+              console.log(`Presence update for ${user.userId}:`, presenceData);
+              setPresenceStatuses(prev => ({
+                ...prev,
+                [user.userId]: presenceData || { status: 'offline' }
+              }));
+            });
+          } else {
+            // AI users are always online
             setPresenceStatuses(prev => ({
               ...prev,
-              [user.userId]: presenceData || { status: 'offline' }
+              [user.userId]: { status: 'online' }
             }));
-          });
+          }
         });
       };
 
-      socket.on('users', handleUsers);
+      socket.on('mentionable_users', handleUsers);
 
       return () => {
-        socket.off('users', handleUsers);
+        socket.off('mentionable_users', handleUsers);
         // Clean up presence listeners
         const db = getDatabase();
         users.forEach(user => {
-          const userPresenceRef = ref(db, `presence/${user.userId}`);
-          off(userPresenceRef);
+          if (!user.isSystemUser) {
+            const userPresenceRef = ref(db, `presence/${user.userId}`);
+            off(userPresenceRef);
+          }
         });
       };
     }
@@ -85,11 +99,85 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
       id: channelId,
       name: user.displayName || user.email,
     });
+    setIsSelectingUser(false);
+    setSearchQuery('');
   };
+
+  const filteredUsers = users.filter(user => {
+    const searchText = (user.displayName || user.email || '').toLowerCase();
+    return searchText.includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="mt-6">
-      <h2 className="text-lg font-semibold mb-2 px-2">Direct Messages</h2>
+      <div className="flex justify-between items-center mb-2 px-2">
+        <h2 className="text-lg font-semibold">Direct Messages</h2>
+        <button
+          onClick={() => setIsSelectingUser(true)}
+          className="text-sm bg-gray-700 px-2 py-1 rounded hover:bg-gray-600 text-white"
+          title="Start DM"
+        >
+          +
+        </button>
+      </div>
+
+      {isSelectingUser && (
+        <div className="px-4 py-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search users..."
+            className="w-full px-2 py-1 text-sm text-black rounded mb-2"
+            autoFocus
+          />
+          <div className="max-h-48 overflow-y-auto bg-gray-800 rounded">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.userId}
+                onClick={() => handleUserSelect(user)}
+                className="flex items-center space-x-2 px-2 py-2 cursor-pointer hover:bg-gray-700"
+              >
+                <div className="relative">
+                  {user.photoURL && (
+                    <Image
+                      src={user.photoURL}
+                      alt={user.displayName || user.email}
+                      width={24}
+                      height={24}
+                      className="rounded-full"
+                    />
+                  )}
+                  <FaCircle className={`w-2 h-2 ${getStatusColor(user.userId)} absolute bottom-0 right-0`} />
+                </div>
+                <div className="flex flex-col">
+                  <span>{user.displayName || user.email}</span>
+                  {user.isSystemUser && (
+                    <span className="text-xs text-blue-400">AI Assistant</span>
+                  )}
+                </div>
+              </div>
+            ))}
+            {filteredUsers.length === 0 && (
+              <div className="px-2 py-2 text-gray-400">
+                No users found
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => {
+                setIsSelectingUser(false);
+                setSearchQuery('');
+              }}
+              className="px-2 py-1 text-sm bg-gray-500 rounded hover:bg-gray-600 text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <ul className="space-y-1">
         {users.map((user) => {
           const status = presenceStatuses[user.userId]?.status || 'offline';
@@ -114,7 +202,12 @@ export const DirectMessagesList = ({ currentUser, onChannelSelect, selectedChann
                 )}
                 <FaCircle className={`w-2 h-2 ${getStatusColor(user.userId)} absolute bottom-0 right-0`} />
               </div>
-              <span>{user.displayName || user.email}</span>
+              <div className="flex flex-col">
+                <span>{user.displayName || user.email}</span>
+                {user.isSystemUser && (
+                  <span className="text-xs text-blue-400">AI Assistant</span>
+                )}
+              </div>
             </li>
           );
         })}

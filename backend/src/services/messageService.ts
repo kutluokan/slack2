@@ -224,6 +224,21 @@ export const messageService = {
   async handleAIInteraction(channelId: string, messages: Message[], triggerMessage: Message) {
     try {
       console.log(`Handling AI interaction for channel: ${channelId}`);
+      
+      // Determine if this is a DM with Elon
+      const isDMWithElon = channelId.startsWith('dm_') && 
+        channelId.includes('elon-musk-ai');
+      
+      // Check if message mentions Elon in a channel
+      const mentionsElon = !channelId.startsWith('dm_') && 
+        triggerMessage.content.toLowerCase().includes('@elon');
+
+      // If this is a DM with Elon or mentions Elon in a channel
+      if (isDMWithElon || mentionsElon) {
+        return this.handleElonResponse(channelId, messages, triggerMessage);
+      }
+
+      // Original AI Assistant logic
       console.log('Initial messages count:', messages.length);
       console.log('Trigger message:', {
         id: triggerMessage.messageId,
@@ -245,10 +260,10 @@ export const messageService = {
         isAI: m.isAIResponse
       })));
       
-      // Format messages for OpenAI, including metadata for better context
+      // Format messages for OpenAI
       const formattedMessages = contextMessages.map(msg => ({
         role: msg.isAIResponse ? 'assistant' as const : 'user' as const,
-        content: `${msg.username}: ${msg.content}`,  // Include username in content for better context
+        content: `${msg.username}: ${msg.content}`,
       }));
 
       // Add the trigger message if it's not already included
@@ -260,23 +275,8 @@ export const messageService = {
         });
       }
 
-      console.log('AI Context:', {
-        channelId,
-        messageCount: formattedMessages.length,
-        timeRange: contextMessages.length > 0 ? {
-          start: new Date(contextMessages[0].timestamp).toISOString(),
-          end: new Date(contextMessages[contextMessages.length - 1].timestamp).toISOString()
-        } : null,
-        messages: formattedMessages.map(m => ({
-          role: m.role,
-          contentLength: m.content.length
-        }))
-      });
-
       // Get AI response
       const aiResponse = await aiService.generateResponse(formattedMessages);
-
-      console.log('Received AI response length:', aiResponse.length);
 
       // Create AI message
       const aiMessage: Message = {
@@ -290,16 +290,65 @@ export const messageService = {
       };
 
       const createdMessage = await this.createMessage(aiMessage);
-      console.log('AI response created:', {
-        messageId: createdMessage.messageId,
-        timestamp: createdMessage.timestamp,
-        contentLength: createdMessage.content.length
-      });
-
       return createdMessage;
     } catch (error) {
       console.error('Error handling AI interaction:', error);
       throw error;
     }
   },
+
+  async handleElonResponse(channelId: string, messages: Message[], triggerMessage: Message) {
+    try {
+      // Ensure messages are in chronological order
+      const orderedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Take the last 25 messages for context
+      const contextMessages = orderedMessages.slice(-25);
+      
+      // Format messages for OpenAI with special system prompt for Elon's personality
+      const formattedMessages = [
+        {
+          role: 'system' as const,
+          content: `You are Elon Musk. Respond in his characteristic style - direct, technical, sometimes humorous, and occasionally controversial. 
+                   Focus on topics like technology, innovation, space exploration, electric vehicles, and artificial intelligence.
+                   Never start responses with 'Assistant:' or similar prefixes. Just respond directly as Elon would.
+                   Keep responses concise and impactful, often with a hint of wit or sarcasm.`
+        },
+        ...contextMessages.map(msg => ({
+          role: msg.isAIResponse ? 'assistant' as const : 'user' as const,
+          content: msg.content
+        }))
+      ];
+
+      // Add the trigger message if it's not already included
+      const isTriggerMessageIncluded = contextMessages.find(msg => msg.messageId === triggerMessage.messageId);
+      if (!isTriggerMessageIncluded) {
+        formattedMessages.push({
+          role: 'user' as const,
+          content: triggerMessage.content
+        });
+      }
+
+      // Get Elon's response
+      const elonResponse = await aiService.generateResponse(formattedMessages);
+
+      // Create Elon's message
+      const elonMessage: Message = {
+        channelId,
+        timestamp: Date.now(),
+        userId: 'elon-musk-ai',
+        content: elonResponse,
+        username: 'Elon Musk',
+        photoURL: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Elon_Musk_Royal_Society_crop.jpg/800px-Elon_Musk_Royal_Society_crop.jpg',
+        isAIResponse: true,
+        messageId: '', // Will be set in createMessage
+      };
+
+      const createdMessage = await this.createMessage(elonMessage);
+      return createdMessage;
+    } catch (error) {
+      console.error('Error handling Elon response:', error);
+      throw error;
+    }
+  }
 }; 

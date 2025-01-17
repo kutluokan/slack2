@@ -12,7 +12,7 @@ const RAG_SERVICE_URL = process.env.RAG_QUERY_URL || 'http://rag_query:8001';
 console.log(`RAG service URL: ${RAG_SERVICE_URL}`);
 
 interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
