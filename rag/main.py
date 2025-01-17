@@ -74,7 +74,7 @@ Relevant Documents:
 Chat History:
 {chat_context}
 
-Please provide a detailed answer based on the above context."""
+Please provide a concise answer based on the above context."""
 
         prompt_template = PromptTemplate(
             template=template,
