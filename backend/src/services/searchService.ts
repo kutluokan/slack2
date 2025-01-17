@@ -2,7 +2,7 @@ import { ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../config/dynamodb";
 import { Message } from "./messageService";
 import { channelService } from "./channelService";
-import { userService } from "./userService";
+import { dmService } from "./dmService";
 
 const MESSAGES_TABLE = "K_Messages";
 
@@ -10,63 +10,94 @@ export const searchService = {
   async searchMessages(query: string, userId?: string): Promise<Message[]> {
     try {
       const lowercaseQuery = query.toLowerCase();
-      let allMessages: Message[] = [];
 
-      // Get all regular channels and DM channels
-      const [channels, dmChannels] = await Promise.all([
-        channelService.getAllChannels(),
-        userId ? channelService.getUserDMChannels(userId) : []
-      ]);
+      // First get all messages (we'll filter them in memory for case-insensitive search)
+      const command = new ScanCommand({
+        TableName: MESSAGES_TABLE
+      });
 
-      // Create a map for DM channel names
-      const dmChannelNames = new Map();
-      for (const channel of dmChannels) {
-        if (channel.participants) {
-          const otherUserId = channel.participants.find(id => id !== userId);
-          if (otherUserId) {
-            const user = await userService.getUser(otherUserId);
-            dmChannelNames.set(channel.channelId, user?.displayName || user?.email || otherUserId);
-          }
-        }
-      }
-
-      // Combine all channels and create channel map
-      const allChannels = [...channels, ...dmChannels];
-      const channelMap = new Map(allChannels.map(channel => [
-        channel.channelId,
-        channel.isDM ? dmChannelNames.get(channel.channelId) : channel.name
-      ]));
-
-      // Fetch messages from each channel
-      for (const channel of allChannels) {
-        const command = new ScanCommand({
-          TableName: MESSAGES_TABLE,
-          FilterExpression: "channelId = :channelId",
-          ExpressionAttributeValues: {
-            ":channelId": channel.channelId
-          }
-        });
-
-        const response = await docClient.send(command);
-        if (response.Items) {
-          const messagesWithChannel = response.Items.map(message => ({
-            ...message,
-            channelName: channelMap.get(message.channelId) || message.channelId
-          }));
-          allMessages = [...allMessages, ...(messagesWithChannel as Message[])];
-        }
-      }
-
-      // Filter messages based on content or file name
-      const filteredMessages = allMessages.filter(message => {
-        const contentMatch = message.content.toLowerCase().includes(lowercaseQuery);
-        let fileMatch = false;
-        if (message.fileAttachment) {
-          const fileName = message.fileAttachment.fileName.toLowerCase();
-          fileMatch = fileName.includes(lowercaseQuery);
-        }
+      const response = await docClient.send(command);
+      const allMessages = (response.Items || []) as Message[];
+      
+      // Filter messages that match the query (case-insensitive)
+      const messages = allMessages.filter(message => {
+        const contentMatch = message.content?.toLowerCase().includes(lowercaseQuery);
+        const fileMatch = message.fileAttachment?.fileName?.toLowerCase().includes(lowercaseQuery);
         return contentMatch || fileMatch;
       });
+
+      if (!userId) {
+        return messages
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 50);
+      }
+
+      // Get channel access information after finding messages
+      const uniqueChannelIds = new Set(messages.map(m => m.channelId).filter(Boolean));
+      const dmChannelIds = new Set<string>();
+      const regularChannelIds = new Set<string>();
+
+      // Categorize channels and check access
+      for (const channelId of uniqueChannelIds) {
+        if (channelId.startsWith('dm_')) {
+          dmChannelIds.add(channelId);
+        } else {
+          regularChannelIds.add(channelId);
+        }
+      }
+
+      // Get regular channels
+      const channels = await channelService.getAllChannels();
+      const accessibleRegularChannels = new Set(
+        channels.map(c => c.channelId)
+      );
+
+      // For DM channels, verify access for each
+      const dmAccessPromises = Array.from(dmChannelIds).map(async channelId => {
+        try {
+          const channel = await channelService.getChannel(channelId);
+          // Check if the user is a participant in the DM
+          if (channel?.participants?.includes(userId)) {
+            return channelId;
+          }
+        } catch (error) {
+          console.error(`Error checking DM access for channel ${channelId}:`, error);
+        }
+        return null;
+      });
+
+      const accessibleDmChannels = new Set(
+        (await Promise.all(dmAccessPromises))
+          .filter((channelId): channelId is string => channelId !== null)
+      );
+
+      // Combine accessible channels
+      const accessibleChannelIds = new Set([
+        ...accessibleRegularChannels,
+        ...accessibleDmChannels
+      ]);
+
+      // Get channel names for accessible channels
+      const channelNames = new Map<string, string>();
+      for (const channelId of accessibleChannelIds) {
+        if (channelId.startsWith('dm_')) {
+          const channelName = await dmService.getDMChannelName(channelId, userId);
+          channelNames.set(channelId, channelName);
+        } else {
+          const channel = channels.find(c => c.channelId === channelId);
+          if (channel) {
+            channelNames.set(channelId, channel.name);
+          }
+        }
+      }
+
+      // Filter messages and add channel names
+      const filteredMessages = messages
+        .filter(message => message.channelId && accessibleChannelIds.has(message.channelId))
+        .map(message => ({
+          ...message,
+          channelName: channelNames.get(message.channelId) || message.channelId
+        }));
 
       return filteredMessages
         .sort((a, b) => b.timestamp - a.timestamp)
