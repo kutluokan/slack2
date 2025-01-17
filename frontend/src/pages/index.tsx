@@ -279,7 +279,7 @@ export default function Home() {
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col h-screen">
             {!selectedChannel ? (
               <div className="flex-1 flex items-center justify-center bg-white">
                 <div className="text-center max-w-2xl mx-auto px-4">
@@ -290,36 +290,45 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <div className="flex-1 flex">
+                <div className="flex-1 flex min-h-0">
                   <div className={`flex-1 flex flex-col ${activeThread ? 'border-r' : ''}`}>
-                    <div className="bg-white border-b px-4 py-2">
+                    {/* Fixed Header */}
+                    <div className="bg-white border-b px-4 py-2 flex-shrink-0">
                       <h2 className="text-xl font-semibold">#{selectedChannel.name}</h2>
                     </div>
-                    <MessageList
-                      messages={messages.filter(msg => !msg.parentMessageId)}
-                      onReactionAdd={addReaction}
-                      onThreadReply={handleThreadReply}
-                      onDelete={deleteMessage}
-                    />
-                    <MessageInput
-                      onSendMessage={(content, userId, username, fileAttachment) =>
-                        sendMessage(content, userId, username, fileAttachment)
-                      }
-                      currentUser={user}
-                    />
+                    {/* Scrollable Message List */}
+                    <div className="flex-1 overflow-y-auto min-h-0">
+                      <MessageList
+                        messages={messages.filter(msg => !msg.parentMessageId)}
+                        onReactionAdd={addReaction}
+                        onThreadReply={handleThreadReply}
+                        onDelete={deleteMessage}
+                      />
+                    </div>
+                    {/* Fixed Message Input */}
+                    <div className="flex-shrink-0 p-4 bg-white border-t">
+                      <MessageInput
+                        onSendMessage={(content, userId, username, fileAttachment) =>
+                          sendMessage(content, userId, username, fileAttachment)
+                        }
+                        currentUser={user}
+                      />
+                    </div>
                   </div>
                   {activeThread && (
-                    <Thread
-                      parentMessage={activeThread}
-                      threadMessages={threadMessages}
-                      onClose={() => setActiveThread(null)}
-                      onSendMessage={(content, userId, username, fileAttachment) =>
-                        handleThreadMessageSend(content, userId, username, fileAttachment)
-                      }
-                      onReactionAdd={addReaction}
-                      onDelete={deleteMessage}
-                      currentUser={user}
-                    />
+                    <div className="w-96 flex flex-col min-h-0">
+                      <Thread
+                        parentMessage={activeThread}
+                        threadMessages={threadMessages}
+                        onClose={() => setActiveThread(null)}
+                        onSendMessage={(content, userId, username, fileAttachment) =>
+                          handleThreadMessageSend(content, userId, username, fileAttachment)
+                        }
+                        onReactionAdd={addReaction}
+                        onDelete={deleteMessage}
+                        currentUser={user}
+                      />
+                    </div>
                   )}
                 </div>
               </>

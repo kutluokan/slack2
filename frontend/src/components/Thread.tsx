@@ -85,9 +85,9 @@ export const Thread = ({
   };
 
   return (
-    <div className="flex flex-col h-full border-l border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full">
       {/* Thread Header */}
-      <div className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+      <div className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 flex-shrink-0">
         <h3 className="text-lg font-semibold">Thread</h3>
         <button
           onClick={onClose}
@@ -98,7 +98,7 @@ export const Thread = ({
       </div>
 
       {/* Parent Message */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <Message
           message={parentMessage}
           isGrouped={false}
@@ -109,7 +109,7 @@ export const Thread = ({
       </div>
 
       {/* Thread Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto min-h-0 p-4">
         {threadMessages.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400 py-4">
             No replies yet. Start a conversation!
@@ -129,7 +129,7 @@ export const Thread = ({
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
         <MessageInput
           onSendMessage={handleSendMessage}
           currentUser={currentUser}
