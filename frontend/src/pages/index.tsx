@@ -253,22 +253,30 @@ export default function Home() {
       <main className="container mx-auto px-4">
         <div className="flex h-screen">
           {/* Sidebar - Always visible */}
-          <div className="w-64 bg-gray-800 text-white p-4 flex flex-col">
-            <UserProfile user={user} onLogout={logout} />
+          <div className="w-64 bg-gray-800 text-white p-4 flex flex-col h-full">
+            <UserProfile user={user} />
             <div className="mb-4">
               <SearchBar onResultSelect={handleSearchResultSelect} />
             </div>
-            <ChannelsList
-              user={user}
-              onChannelSelect={handleChannelChange}
-              selectedChannelId={selectedChannel?.id || ''}
-            />
-            <DirectMessagesList
-              currentUser={user}
-              onChannelSelect={handleChannelChange}
-              selectedChannelId={selectedChannel?.id || ''}
-            />
-            <AIAvatarList onUserSelect={handleAIAvatarSelect} />
+            <div className="flex-1 overflow-y-auto">
+              <ChannelsList
+                user={user}
+                onChannelSelect={handleChannelChange}
+                selectedChannelId={selectedChannel?.id || ''}
+              />
+              <DirectMessagesList
+                currentUser={user}
+                onChannelSelect={handleChannelChange}
+                selectedChannelId={selectedChannel?.id || ''}
+              />
+              <AIAvatarList onUserSelect={handleAIAvatarSelect} />
+            </div>
+            <button
+              onClick={logout}
+              className="mt-4 w-full text-sm bg-gray-700 px-3 py-2 rounded hover:bg-gray-600 text-center"
+            >
+              Logout
+            </button>
           </div>
 
           {/* Main Content Area */}

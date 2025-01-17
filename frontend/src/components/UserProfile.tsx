@@ -9,12 +9,11 @@ interface UserProfileProps {
     displayName: string | null;
     photoURL: string | null;
   };
-  onLogout: () => void;
 }
 
-export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
+export const UserProfile: React.FC<UserProfileProps> = ({ user }) => {
   return (
-    <div className="flex items-center justify-between p-4 border-b border-gray-700">
+    <div className="flex items-center p-4 border-b border-gray-700">
       <div className="flex items-center space-x-3">
         {user.photoURL ? (
           <Image
@@ -38,12 +37,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout }) => {
           <PresenceIndicator userId={user.uid} />
         </div>
       </div>
-      <button
-        onClick={onLogout}
-        className="text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
-      >
-        Logout
-      </button>
     </div>
   );
 }; 
