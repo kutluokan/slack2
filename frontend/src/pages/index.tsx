@@ -7,7 +7,6 @@ import { MessageList } from '../components/MessageList';
 import { useMessages } from '../hooks/useMessages';
 import { AIAvatarList } from '../components/AIAvatarList';
 import { MessageInput } from '../components/MessageInput';
-import { PresenceIndicator } from '../components/PresenceIndicator';
 import { SearchBar } from '../components/SearchBar';
 import { Thread } from '../components/Thread';
 import type { Message as MessageType } from '../hooks/useMessages';
