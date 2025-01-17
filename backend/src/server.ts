@@ -3,17 +3,49 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
 import { messageService, Message } from './services/messageService';
 import { channelService } from './services/channelService';
 import { userService } from './services/userService';
 import { s3Service } from './services/s3Service';
 import { searchService } from './services/searchService';
 import { dmService } from './services/dmService';
+import path from 'path';
+import fs from 'fs';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
 
 dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+// Configure multer for file uploads
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+console.log('Upload directory path:', UPLOAD_DIR);
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_DIR)) {
+  console.log('Creating upload directory at:', UPLOAD_DIR);
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOAD_DIR)
+  },
+  filename: function (req, file, cb) {
+    const timestamp = Date.now();
+    cb(null, `${timestamp}-${file.originalname}`)
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB limit
+  }
+});
 
 const allowedOrigins = process.env.PUBLIC_URLS?.split(',') || [
   'http://localhost:3000',
@@ -42,7 +74,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+
+// Increase payload size limit for JSON and URL-encoded data
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Basic health check route
 app.get('/health', (req, res) => {
@@ -308,6 +343,119 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
+});
+
+// Add file upload endpoint
+app.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      throw new Error('No file uploaded');
+    }
+
+    console.log('File received:', {
+      filename: req.file.originalname,
+      path: req.file.path,
+      size: req.file.size
+    });
+
+    // Verify the file exists in the upload directory
+    if (!fs.existsSync(req.file.path)) {
+      throw new Error('File was not saved properly');
+    }
+
+    // Read the file from disk
+    const fileContent = await fs.promises.readFile(req.file.path);
+    console.log('File read from disk, size:', fileContent.length);
+
+    // Verify file content
+    if (!fileContent || fileContent.length === 0) {
+      throw new Error('File content is empty');
+    }
+
+    const fileData = {
+      fileName: req.file.originalname,
+      fileType: req.file.mimetype,
+      fileSize: req.file.size,
+      fileContent: fileContent
+    };
+
+    // Process file (save another copy locally and upload to S3)
+    const uploadData = await s3Service.getUploadPresignedUrl(fileData);
+    
+    // Send file to RAG service for processing
+    const formData = new FormData();
+    formData.append('file', fileContent, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+      knownLength: req.file.size
+    });
+
+    try {
+      const ragServiceUrl = process.env.RAG_SERVICE_URL || 'http://rag_app:8001';
+      const ragResponse = await fetch(`${ragServiceUrl}/process`, {
+        method: 'POST',
+        body: formData,
+        headers: formData.getHeaders()
+      });
+
+      if (!ragResponse.ok) {
+        console.error('RAG processing failed:', await ragResponse.text());
+      } else {
+        console.log('RAG processing successful:', await ragResponse.json());
+      }
+    } catch (ragError) {
+      console.error('Error sending to RAG service:', ragError);
+      // Don't throw here, we still want to return the upload success
+    }
+
+    // Verify both files exist
+    const multerFilePath = req.file.path;
+    const s3ServiceFilePath = uploadData.localPath;
+    
+    if (!fs.existsSync(multerFilePath)) {
+      console.error('Multer file not found at:', multerFilePath);
+    }
+    if (!fs.existsSync(s3ServiceFilePath)) {
+      console.error('S3 service file not found at:', s3ServiceFilePath);
+    }
+
+    console.log('File processing complete:', {
+      multerPath: multerFilePath,
+      s3ServicePath: s3ServiceFilePath,
+      s3Key: uploadData.key
+    });
+
+    res.json({
+      ...uploadData,
+      message: 'File uploaded and saved successfully'
+    });
+  } catch (error) {
+    console.error('Error handling file upload:', error);
+    res.status(500).json({ error: `Failed to handle file upload: ${(error as Error).message}` });
+  }
+});
+
+// Add route to list uploaded files
+app.get('/uploads', async (req, res) => {
+  try {
+    const files = await fs.promises.readdir(UPLOAD_DIR);
+    const fileDetails = await Promise.all(
+      files.map(async (filename) => {
+        const filePath = path.join(UPLOAD_DIR, filename);
+        const stats = await fs.promises.stat(filePath);
+        return {
+          name: filename,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      })
+    );
+    res.json(fileDetails);
+  } catch (error) {
+    console.error('Error listing uploads:', error);
+    res.status(500).json({ error: 'Failed to list uploads' });
+  }
 });
 
 const PORT = process.env.PORT || 4000;

@@ -125,47 +125,21 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
 
     setIsUploading(true);
     try {
-      // Request upload URL
-      socket.emit('request_upload_url', {
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Upload directly to backend
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
       });
 
-      // Wait for the upload URL with timeout
-      const uploadData = await Promise.race<UploadResponse>([
-        new Promise<UploadResponse>((resolve, reject) => {
-          socket.once('upload_url_generated', resolve);
-          socket.once('error', reject);
-        }),
-        new Promise<UploadResponse>((_, reject) => 
-          setTimeout(() => reject(new Error('Upload URL request timed out')), 10000)
-        )
-      ]);
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
 
-      // Upload the file with progress tracking
-      const xhr = new XMLHttpRequest();
-      await new Promise<void>((resolve, reject) => {
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const progress = (event.loaded / event.total) * 100;
-            console.log(`Upload progress: ${progress.toFixed(2)}%`);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status: ${xhr.status}`));
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Upload failed'));
-        xhr.open('PUT', uploadData.uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.send(file);
-      });
+      const uploadData = await response.json();
 
       // Send message with file attachment
       onSendMessage(

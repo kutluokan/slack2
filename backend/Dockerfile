@@ -18,5 +18,14 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 
+# Create uploads directory and set permissions
+RUN mkdir -p uploads && \
+    chown -R node:node /app && \
+    chmod -R 755 /app && \
+    chmod 777 /app/uploads
+
+# Switch to non-root user
+USER node
+
 EXPOSE 4000
 CMD ["npm", "start"]

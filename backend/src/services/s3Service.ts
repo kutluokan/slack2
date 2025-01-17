@@ -15,8 +15,12 @@ if (missingEnvVars.length > 0) {
 }
 
 // Ensure local storage directory exists
-const LOCAL_STORAGE_DIR = path.join(__dirname, '../../../uploads');
+const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
+console.log('S3 service upload directory:', LOCAL_STORAGE_DIR);
+
+// Create directory if it doesn't exist
 if (!fs.existsSync(LOCAL_STORAGE_DIR)) {
+  console.log('Creating S3 service upload directory at:', LOCAL_STORAGE_DIR);
   fs.mkdirSync(LOCAL_STORAGE_DIR, { recursive: true });
 }
 
@@ -39,7 +43,7 @@ export interface FileUpload {
 export const s3Service = {
   async getUploadPresignedUrl(fileUpload: FileUpload) {
     try {
-      console.log(`Generating upload URL for file: ${fileUpload.fileName}`);
+      console.log(`Processing file: ${fileUpload.fileName}`);
       
       // Validate file size (e.g., 100MB limit)
       const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -49,26 +53,44 @@ export const s3Service = {
 
       // Sanitize file name to prevent directory traversal
       const sanitizedFileName = path.basename(fileUpload.fileName);
-      const key = `uploads/${Date.now()}-${sanitizedFileName}`;
+      const timestamp = Date.now();
+      const key = `uploads/${timestamp}-${sanitizedFileName}`;
 
-      const command = new PutObjectCommand({
+      // Save file locally first
+      const localFilename = `${timestamp}-${sanitizedFileName}`;
+      const localPath = path.join(LOCAL_STORAGE_DIR, localFilename);
+      
+      if (fileUpload.fileContent) {
+        try {
+          await fs.promises.writeFile(localPath, fileUpload.fileContent);
+          console.log(`File saved locally at: ${localPath}`);
+        } catch (writeError) {
+          console.error('Error writing file locally:', writeError);
+          throw new Error(`Failed to save file locally: ${(writeError as Error).message}`);
+        }
+      } else {
+        throw new Error('No file content provided');
+      }
+
+      // Upload to S3
+      const uploadCommand = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,
         Key: key,
+        Body: fileUpload.fileContent,
         ContentType: fileUpload.fileType,
         ContentLength: fileUpload.fileSize
       });
 
-      // Save file locally if it's a PDF or TXT
-      if (fileUpload.fileContent && (fileUpload.fileType === 'application/pdf' || fileUpload.fileType === 'text/plain')) {
-        const localPath = path.join(LOCAL_STORAGE_DIR, sanitizedFileName);
-        fs.writeFileSync(localPath, fileUpload.fileContent);
-        console.log(`File saved locally at: ${localPath}`);
+      try {
+        await s3Client.send(uploadCommand);
+        console.log(`File uploaded to S3 with key: ${key}`);
+      } catch (s3Error) {
+        // If S3 upload fails, we still keep the local file
+        console.error('Error uploading to S3:', s3Error);
+        throw new Error(`Failed to upload to S3: ${(s3Error as Error).message}`);
       }
 
-      const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-      console.log(`Upload URL generated successfully for key: ${key}`);
-
-      // Generate a pre-signed URL for immediate download after upload
+      // Generate a download URL
       const getCommand = new GetObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,
         Key: key
@@ -76,13 +98,14 @@ export const s3Service = {
       const downloadUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
 
       return {
-        uploadUrl,
+        uploadUrl: '', // No longer needed as we upload directly
         fileUrl: downloadUrl,
-        key
+        key,
+        localPath
       };
     } catch (error) {
-      console.error('Error generating upload URL:', error);
-      throw new Error(`Failed to generate upload URL: ${(error as Error).message}`);
+      console.error('Error processing file:', error);
+      throw new Error(`Failed to process file: ${(error as Error).message}`);
     }
   },
 
