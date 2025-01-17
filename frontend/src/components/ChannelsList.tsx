@@ -61,7 +61,7 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
         }
       };
 
-      const handleError = (error: any) => {
+      const handleError = (error: Error | { message: string }) => {
         console.error('Socket error:', error);
       };
 
@@ -125,6 +125,16 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      createChannel();
+    } else if (e.key === 'Escape') {
+      setIsCreating(false);
+      setNewChannelName('');
+    }
+  };
+
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-2 px-2">
@@ -143,6 +153,7 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
             type="text"
             value={newChannelName}
             onChange={(e) => setNewChannelName(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Channel name"
             className="w-full px-2 py-1 text-sm text-black rounded"
             autoFocus

@@ -41,6 +41,7 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
   const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedUserIndex, setSelectedUserIndex] = useState(0);
 
   useEffect(() => {
     const handleMentionableUsers = (users: User[]) => {
@@ -96,15 +97,29 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputValue.trim()) {
+    if (showMentions && filteredUsers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedUserIndex((prev) => (prev + 1) % filteredUsers.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedUserIndex((prev) => (prev - 1 + filteredUsers.length) % filteredUsers.length);
+      } else if (e.key === 'Enter' && showMentions) {
+        e.preventDefault();
+        handleMentionSelect(filteredUsers[selectedUserIndex]);
+        return;
+      } else if (e.key === 'Escape') {
+        setShowMentions(false);
+      }
+    }
+
+    if (e.key === 'Enter' && inputValue.trim() && !showMentions) {
       onSendMessage(
         inputValue,
         currentUser.uid,
         currentUser.displayName || 'Anonymous'
       );
       setInputValue('');
-      setShowMentions(false);
-    } else if (e.key === 'Escape') {
       setShowMentions(false);
     }
   };
@@ -219,11 +234,13 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
       {/* Mentions Popup */}
       {showMentions && filteredUsers.length > 0 && (
         <div className="absolute bottom-full mb-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 max-h-48 overflow-y-auto">
-          {filteredUsers.map(user => (
+          {filteredUsers.map((user, index) => (
             <div
               key={user.userId}
               onClick={() => handleMentionSelect(user)}
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+              className={`px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2 ${
+                index === selectedUserIndex ? 'bg-gray-100' : ''
+              }`}
             >
               {user.photoURL && (
                 <Image 

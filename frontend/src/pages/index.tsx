@@ -253,6 +253,12 @@ export default function Home() {
         <div className="flex h-screen">
           {/* Sidebar - Always visible */}
           <div className="w-64 bg-gray-800 text-white p-4 flex flex-col h-full">
+            <div 
+              onClick={() => handleChannelChange(null)}
+              className="text-xl font-bold mb-4 cursor-pointer hover:text-gray-300 transition-colors text-center"
+            >
+              Chat Genius AI
+            </div>
             <UserProfile user={user} />
             <div className="mb-4">
               <SearchBar onResultSelect={handleSearchResultSelect} />
