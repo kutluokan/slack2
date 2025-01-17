@@ -12,6 +12,7 @@ import { SearchBar } from '../components/SearchBar';
 import { Thread } from '../components/Thread';
 import type { Message as MessageType } from '../hooks/useMessages';
 import { socket } from '../config/socket';
+import { UserProfile } from '../components/UserProfile';
 
 interface Channel {
   channelId: string;
@@ -253,20 +254,9 @@ export default function Home() {
         <div className="flex h-screen">
           {/* Sidebar - Always visible */}
           <div className="w-64 bg-gray-800 text-white p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold">Chat Genius AI</h1>
-              <button
-                onClick={logout}
-                className="text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
-              >
-                Logout
-              </button>
-            </div>
+            <UserProfile user={user} onLogout={logout} />
             <div className="mb-4">
               <SearchBar onResultSelect={handleSearchResultSelect} />
-            </div>
-            <div className="mb-4">
-              <PresenceIndicator userId={user.uid} />
             </div>
             <ChannelsList
               user={user}
