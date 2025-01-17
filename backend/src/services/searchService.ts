@@ -37,7 +37,7 @@ export const searchService = {
       const dmChannelIds = new Set<string>();
       const regularChannelIds = new Set<string>();
 
-      // Categorize channels and check access
+      // Categorize channels
       for (const channelId of uniqueChannelIds) {
         if (channelId.startsWith('dm_')) {
           dmChannelIds.add(channelId);
@@ -52,23 +52,10 @@ export const searchService = {
         channels.map(c => c.channelId)
       );
 
-      // For DM channels, verify access for each
-      const dmAccessPromises = Array.from(dmChannelIds).map(async channelId => {
-        try {
-          const channel = await channelService.getChannel(channelId);
-          // Check if the user is a participant in the DM
-          if (channel?.participants?.includes(userId)) {
-            return channelId;
-          }
-        } catch (error) {
-          console.error(`Error checking DM access for channel ${channelId}:`, error);
-        }
-        return null;
-      });
-
+      // Get all user's DM channels
+      const userDMChannels = await dmService.getUserDMChannels(userId);
       const accessibleDmChannels = new Set(
-        (await Promise.all(dmAccessPromises))
-          .filter((channelId): channelId is string => channelId !== null)
+        userDMChannels.map(channel => channel.channelId)
       );
 
       // Combine accessible channels
