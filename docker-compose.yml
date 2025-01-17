@@ -65,7 +65,8 @@ services:
     volumes:
       - uploads_data:/app/uploads
     depends_on:
-      - rag_app
+      rag_app:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
@@ -75,23 +76,32 @@ services:
       context: ./rag
       dockerfile: Dockerfile
     expose:
+      - "8000"
       - "8001"
     ports:
+      - "8000:8000"
       - "8001:8001"
     env_file:
       - ./.env
     environment:
       - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX=${PINECONE_INDEX}
+      - PINECONE_ENV=${PINECONE_ENV}
     volumes:
       - uploads_data:/app/uploads
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: always
+      test: 
+        - "CMD-SHELL"
+        - "curl -f http://localhost:8001/health || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
+    restart: always
 
 networks:
   app-network:

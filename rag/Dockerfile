@@ -14,6 +14,9 @@ COPY . .
 RUN mkdir -p /app/uploads && \
     chmod 777 /app/uploads
 
-EXPOSE 8001
+# Make start script executable
+RUN chmod +x /app/start.sh
 
-CMD ["uvicorn", "upload:app", "--host", "0.0.0.0", "--port", "8001"]
+EXPOSE 8000 8001
+
+CMD ["/app/start.sh"]
