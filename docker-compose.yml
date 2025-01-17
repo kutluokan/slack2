@@ -89,6 +89,7 @@ services:
       - PINECONE_API_KEY=${PINECONE_API_KEY}
       - PINECONE_INDEX=${PINECONE_INDEX}
       - PINECONE_ENV=${PINECONE_ENV}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,https://localhost,http://ec2-18-189-195-81.us-east-2.compute.amazonaws.com,https://ec2-18-189-195-81.us-east-2.compute.amazonaws.com}
     volumes:
       - uploads_data:/app/uploads
     healthcheck:

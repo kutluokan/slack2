@@ -23,13 +23,19 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Get allowed origins from environment variable or use default
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost,https://localhost").split(",")
+logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # Only allow specific origins in production
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # Only allow needed methods
+    allow_headers=["Content-Type", "Authorization"],  # Only allow needed headers
+    expose_headers=["Content-Length"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 load_dotenv()

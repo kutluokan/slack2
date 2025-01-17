@@ -34,13 +34,19 @@ if not PINECONE_INDEX:
 
 app = FastAPI()
 
+# Get allowed origins from environment variable or use default
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost,https://localhost").split(",")
+logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=ALLOWED_ORIGINS,  # Only allow specific origins in production
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # Only allow needed methods
+    allow_headers=["Content-Type", "Authorization"],  # Only allow needed headers
+    expose_headers=["Content-Length"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 @app.middleware("http")
@@ -120,7 +126,7 @@ async def get_rag_response(prompt: str, chat_history: List[Dict[str, str]] = Non
         
         # Get response from LLM
         logger.info("Initializing ChatOpenAI")
-        llm = ChatOpenAI(temperature=0.7, model_name="gpt-4")
+        llm = ChatOpenAI(temperature=0.7, model_name="gpt-4o-mini")
         logger.info("Generating response from LLM")
         response = llm.invoke(prompt_with_context)
         
