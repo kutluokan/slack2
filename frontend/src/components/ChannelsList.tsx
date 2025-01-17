@@ -27,25 +27,49 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
     if (user?.uid) {
       // Ensure socket is connected
       const initializeSocket = async () => {
-        await connectSocket(user.uid);
-        socket.emit('get_channels');
+        try {
+          await connectSocket(user.uid);
+          socket.emit('get_channels');
+          console.log('Socket initialized and channels requested');
+        } catch (error) {
+          console.error('Error initializing socket:', error);
+        }
       };
 
       initializeSocket();
 
       // Handle socket events
       const handleChannels = (channelList: Channel[]) => {
+        console.log('Received channels:', channelList.length);
         setChannels(channelList);
       };
 
       const handleChannelCreated = (newChannel: Channel) => {
-        setChannels(prev => [...prev, newChannel]);
+        console.log('New channel created:', newChannel.name);
+        setChannels(prev => {
+          const updated = [...prev, newChannel];
+          // Sort channels by creation time
+          return updated.sort((a, b) => b.createdAt - a.createdAt);
+        });
       };
 
       const handleChannelDeleted = (deletedChannelId: string) => {
+        console.log('Channel deleted:', deletedChannelId);
         setChannels(prev => prev.filter(channel => channel.channelId !== deletedChannelId));
         if (selectedChannelId === deletedChannelId) {
           onChannelSelect(null); // Reset selected channel if it was deleted
+        }
+      };
+
+      const handleError = (error: any) => {
+        console.error('Socket error:', error);
+      };
+
+      const handleDisconnect = (reason: string) => {
+        console.log('Socket disconnected:', reason);
+        if (reason === 'io server disconnect') {
+          // Server disconnected, try to reconnect
+          socket.connect();
         }
       };
 
@@ -53,17 +77,24 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
       socket.on('channels', handleChannels);
       socket.on('channel_created', handleChannelCreated);
       socket.on('channel_deleted', handleChannelDeleted);
+      socket.on('connect_error', handleError);
+      socket.on('error', handleError);
+      socket.on('disconnect', handleDisconnect);
       
       // Handle reconnection
       socket.on('connect', () => {
+        console.log('Socket reconnected, requesting channels');
         socket.emit('get_channels');
       });
 
       return () => {
         socket.off('channels', handleChannels);
         socket.off('channel_created', handleChannelCreated);
-        socket.off('connect');
         socket.off('channel_deleted', handleChannelDeleted);
+        socket.off('connect_error', handleError);
+        socket.off('error', handleError);
+        socket.off('disconnect', handleDisconnect);
+        socket.off('connect');
       };
     }
   }, [user?.uid, selectedChannelId, onChannelSelect]);

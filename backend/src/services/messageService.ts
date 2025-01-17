@@ -71,19 +71,64 @@ export const messageService = {
   },
 
   async getChannelMessages(channelId: string) {
-    const command = new QueryCommand({
-      TableName: TABLE_NAME,
-      IndexName: "ChannelIndex",
-      KeyConditionExpression: "channelId = :channelId",
-      ExpressionAttributeValues: {
-        ":channelId": channelId,
-      },
-      ScanIndexForward: false,
-      Limit: 50,
-    });
+    try {
+      console.log(`Fetching messages for channel: ${channelId}`);
+      
+      const command = new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: "ChannelIndex",
+        KeyConditionExpression: "channelId = :channelId",
+        ExpressionAttributeValues: {
+          ":channelId": channelId,
+        },
+        ExpressionAttributeNames: {
+          "#ts": "timestamp",
+          "#content": "content",
+          "#uid": "userId",
+          "#uname": "username",
+          "#isAI": "isAIResponse"
+        },
+        ProjectionExpression: "messageId, channelId, #ts, #uid, #content, #uname, #isAI, reactions",
+        ScanIndexForward: false,  // Get newest messages first
+        Limit: 100  // Increased limit for better context
+      });
 
-    const response = await docClient.send(command);
-    return response.Items as Message[];
+      console.log('Query command:', JSON.stringify(command.input, null, 2));
+      
+      const response = await docClient.send(command);
+      
+      console.log('Raw DynamoDB response:', JSON.stringify(response, null, 2));
+      console.log(`Retrieved ${response.Items?.length || 0} messages`);
+      
+      if (!response.Items || response.Items.length === 0) {
+        console.log('No messages found for channel');
+        return [];
+      }
+
+      // Sort messages by timestamp to ensure correct order
+      const messages = response.Items as Message[];
+      messages.sort((a, b) => a.timestamp - b.timestamp);
+
+      console.log('Sorted messages timestamps:', messages.map(m => ({
+        messageId: m.messageId,
+        timestamp: m.timestamp,
+        username: m.username,
+        isAI: m.isAIResponse
+      })));
+
+      return messages;
+    } catch (error: any) {
+      console.error('Error fetching channel messages:', {
+        error: error.message,
+        name: error.name,
+        channelId,
+        time: new Date().toISOString(),
+        code: error.code,
+        statusCode: error.$metadata?.httpStatusCode,
+        details: error.toString()
+      });
+      throw error;
+    }
   },
 
   async getThreadMessages(parentMessageId: string) {
@@ -175,20 +220,60 @@ export const messageService = {
 
   async handleAIInteraction(channelId: string, messages: Message[], triggerMessage: Message) {
     try {
-      // Format messages for OpenAI
-      const formattedMessages = messages.map(msg => ({
+      console.log(`Handling AI interaction for channel: ${channelId}`);
+      console.log('Initial messages count:', messages.length);
+      console.log('Trigger message:', {
+        id: triggerMessage.messageId,
+        content: triggerMessage.content,
+        username: triggerMessage.username
+      });
+      
+      // Ensure messages are in chronological order
+      const orderedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Take the last 25 messages for better context
+      const contextMessages = orderedMessages.slice(-25);
+      
+      console.log('Context messages:', contextMessages.map(m => ({
+        messageId: m.messageId,
+        timestamp: m.timestamp,
+        username: m.username,
+        content: m.content.substring(0, 50) + (m.content.length > 50 ? '...' : ''),
+        isAI: m.isAIResponse
+      })));
+      
+      // Format messages for OpenAI, including metadata for better context
+      const formattedMessages = contextMessages.map(msg => ({
         role: msg.isAIResponse ? 'assistant' as const : 'user' as const,
-        content: msg.content
+        content: `${msg.username}: ${msg.content}`,  // Include username in content for better context
       }));
 
-      // Add the trigger message
-      formattedMessages.push({
-        role: 'user' as const,
-        content: triggerMessage.content
+      // Add the trigger message if it's not already included
+      const isTriggerMessageIncluded = contextMessages.find(msg => msg.messageId === triggerMessage.messageId);
+      if (!isTriggerMessageIncluded) {
+        formattedMessages.push({
+          role: 'user' as const,
+          content: `${triggerMessage.username}: ${triggerMessage.content}`
+        });
+      }
+
+      console.log('AI Context:', {
+        channelId,
+        messageCount: formattedMessages.length,
+        timeRange: contextMessages.length > 0 ? {
+          start: new Date(contextMessages[0].timestamp).toISOString(),
+          end: new Date(contextMessages[contextMessages.length - 1].timestamp).toISOString()
+        } : null,
+        messages: formattedMessages.map(m => ({
+          role: m.role,
+          contentLength: m.content.length
+        }))
       });
 
       // Get AI response
       const aiResponse = await aiService.generateResponse(formattedMessages);
+
+      console.log('Received AI response length:', aiResponse.length);
 
       // Create AI message
       const aiMessage: Message = {
@@ -201,7 +286,14 @@ export const messageService = {
         messageId: '', // Will be set in createMessage
       };
 
-      return await this.createMessage(aiMessage);
+      const createdMessage = await this.createMessage(aiMessage);
+      console.log('AI response created:', {
+        messageId: createdMessage.messageId,
+        timestamp: createdMessage.timestamp,
+        contentLength: createdMessage.content.length
+      });
+
+      return createdMessage;
     } catch (error) {
       console.error('Error handling AI interaction:', error);
       throw error;

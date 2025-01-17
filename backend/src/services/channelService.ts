@@ -52,18 +52,41 @@ export const channelService = {
 
   async getAllChannels() {
     try {
+      console.log('Fetching all channels');
+      
       const command = new ScanCommand({
         TableName: TABLE_NAME,
         FilterExpression: 'attribute_not_exists(isDM) OR isDM = :isDM',
         ExpressionAttributeValues: {
           ':isDM': false
-        }
+        },
+        ConsistentRead: true  // Added to ensure consistency
       });
 
+      console.log('Scan command:', JSON.stringify(command.input, null, 2));
+      
       const response = await docClient.send(command);
-      return response.Items as Channel[];
-    } catch (error) {
-      console.error('Error getting all channels:', error);
+      
+      console.log(`Retrieved ${response.Items?.length || 0} channels`);
+      
+      if (!response.Items || response.Items.length === 0) {
+        console.log('No channels found');
+        return [];
+      }
+
+      // Sort channels by creation time
+      const channels = response.Items as Channel[];
+      channels.sort((a, b) => b.createdAt - a.createdAt);
+
+      return channels;
+    } catch (error: any) {
+      console.error('Error getting all channels:', {
+        error: error.message,
+        name: error.name,
+        time: new Date().toISOString(),
+        code: error.code,
+        statusCode: error.$metadata?.httpStatusCode,
+      });
       throw error;
     }
   },

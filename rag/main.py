@@ -106,22 +106,32 @@ async def get_rag_response(prompt: str, chat_history: List[Dict[str, str]] = Non
         # Format chat history context if provided
         chat_context = ""
         if chat_history:
+            # Include all messages for better context
             chat_context = "\n".join([
-                f"{msg['role']}: {msg['content']}"
-                for msg in chat_history[-5:]  # Include last 5 messages for context
+                f"{msg['role'].capitalize()}: {msg['content']}"
+                for msg in chat_history  # Remove the slice to include all messages
             ])
-            logger.info(f"Including {len(chat_history[-5:])} messages from chat history")
+            logger.info(f"Including {len(chat_history)} messages from chat history")
         
         # Create prompt template with context
         template = PromptTemplate(
-            template="{query} Context: {context}",
-            input_variables=["query", "context"]
+            template="""Based on the following conversation history and context, please provide a response:
+
+Chat History:
+{chat_context}
+
+Additional Context:
+{context}
+
+Current Question: {query}""",
+            input_variables=["query", "context", "chat_context"]
         )
         
         # Generate the full prompt
         prompt_with_context = template.invoke({
             "query": prompt,
-            "context": context
+            "context": context,
+            "chat_context": chat_context
         })
         
         # Get response from LLM
