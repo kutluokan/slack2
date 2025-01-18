@@ -74,8 +74,6 @@ export const messageService = {
 
   async getChannelMessages(channelId: string) {
     try {
-      console.log(`Fetching messages for channel: ${channelId}`);
-      
       const command = new QueryCommand({
         TableName: TABLE_NAME,
         IndexName: "ChannelIndex",
@@ -93,19 +91,13 @@ export const messageService = {
           "#file": "fileAttachment"
         },
         ProjectionExpression: "messageId, channelId, #ts, #uid, #content, #uname, #isAI, #photo, reactions, #file",
-        ScanIndexForward: false,  // Get newest messages first
-        Limit: 100  // Increased limit for better context
+        ScanIndexForward: false,
+        Limit: 100
       });
-
-      console.log('Query command:', JSON.stringify(command.input, null, 2));
       
       const response = await docClient.send(command);
       
-      console.log('Raw DynamoDB response:', JSON.stringify(response, null, 2));
-      console.log(`Retrieved ${response.Items?.length || 0} messages`);
-      
       if (!response.Items || response.Items.length === 0) {
-        console.log('No messages found for channel');
         return [];
       }
 
@@ -113,24 +105,9 @@ export const messageService = {
       const messages = response.Items as Message[];
       messages.sort((a, b) => a.timestamp - b.timestamp);
 
-      console.log('Sorted messages timestamps:', messages.map(m => ({
-        messageId: m.messageId,
-        timestamp: m.timestamp,
-        username: m.username,
-        isAI: m.isAIResponse
-      })));
-
       return messages;
     } catch (error: any) {
-      console.error('Error fetching channel messages:', {
-        error: error.message,
-        name: error.name,
-        channelId,
-        time: new Date().toISOString(),
-        code: error.code,
-        statusCode: error.$metadata?.httpStatusCode,
-        details: error.toString()
-      });
+      console.error('Error fetching channel messages:', error.message);
       throw error;
     }
   },
@@ -257,8 +234,6 @@ export const messageService = {
 
   async handleAIInteraction(channelId: string, messages: Message[], triggerMessage: Message) {
     try {
-      console.log(`Handling AI interaction for channel: ${channelId}`);
-      
       // Determine if this is a DM with Elon or AI Assistant
       const isDMWithElon = channelId.startsWith('dm_') && channelId.includes('elon-musk-ai');
       const isDMWithAI = channelId.startsWith('dm_') && channelId.includes('ai-assistant');
@@ -278,27 +253,9 @@ export const messageService = {
       }
 
       // Original AI Assistant logic for channels
-      console.log('Initial messages count:', messages.length);
-      console.log('Trigger message:', {
-        id: triggerMessage.messageId,
-        content: triggerMessage.content,
-        username: triggerMessage.username
-      });
-      
-      // Ensure messages are in chronological order
       const orderedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
-      
-      // Take the last 25 messages for better context
       const contextMessages = orderedMessages.slice(-25);
       
-      console.log('Context messages:', contextMessages.map(m => ({
-        messageId: m.messageId,
-        timestamp: m.timestamp,
-        username: m.username,
-        content: m.content.substring(0, 50) + (m.content.length > 50 ? '...' : ''),
-        isAI: m.isAIResponse
-      })));
-
       // Format messages for OpenAI
       const formattedMessages = contextMessages.map(msg => ({
         role: msg.isAIResponse ? 'assistant' as const : 'user' as const,

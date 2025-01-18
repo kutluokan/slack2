@@ -52,25 +52,18 @@ export const channelService = {
 
   async getAllChannels() {
     try {
-      console.log('Fetching all channels');
-      
       const command = new ScanCommand({
         TableName: TABLE_NAME,
         FilterExpression: 'attribute_not_exists(isDM) OR isDM = :isDM',
         ExpressionAttributeValues: {
           ':isDM': false
         },
-        ConsistentRead: true  // Added to ensure consistency
+        ConsistentRead: true
       });
-
-      console.log('Scan command:', JSON.stringify(command.input, null, 2));
       
       const response = await docClient.send(command);
       
-      console.log(`Retrieved ${response.Items?.length || 0} channels`);
-      
       if (!response.Items || response.Items.length === 0) {
-        console.log('No channels found');
         return [];
       }
 
@@ -80,13 +73,7 @@ export const channelService = {
 
       return channels;
     } catch (error: any) {
-      console.error('Error getting all channels:', {
-        error: error.message,
-        name: error.name,
-        time: new Date().toISOString(),
-        code: error.code,
-        statusCode: error.$metadata?.httpStatusCode,
-      });
+      console.error('Error getting all channels:', error.message);
       throw error;
     }
   },

@@ -23,11 +23,9 @@ const httpServer = createServer(app);
 
 // Configure multer for file uploads
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
-console.log('Upload directory path:', UPLOAD_DIR);
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
-  console.log('Creating upload directory at:', UPLOAD_DIR);
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
@@ -96,8 +94,6 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id, 'User ID:', socket.data.userId);
-
   socket.on('join_channel', (channelId: string) => {
     socket.join(channelId);
   });
@@ -377,6 +373,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    // Keep this log as it's useful for debugging connection issues
     console.log('User disconnected:', socket.id);
   });
 });
