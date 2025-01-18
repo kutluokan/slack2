@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { FaTrash, FaDownload } from 'react-icons/fa';
+import { FaTrash, FaDownload, FaVolumeUp } from 'react-icons/fa';
 import Image from 'next/image';
 import type { Message as MessageType } from '../hooks/useMessages';
+import { socket } from '../config/socket';
 
 interface MessageProps {
   message: MessageType;
@@ -14,8 +15,58 @@ interface MessageProps {
 export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDelete }: MessageProps) => {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const handleTTSGenerated = (data: { messageId: string; audioData: string }) => {
+      if (data.messageId === message.messageId) {
+        // Convert base64 to blob and create URL
+        const blob = new Blob([Buffer.from(data.audioData, 'base64')], { type: 'audio/mp3' });
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        
+        // Play the audio
+        if (audioRef.current) {
+          audioRef.current.src = url;
+          audioRef.current.play();
+          setIsPlaying(true);
+        }
+      }
+    };
+
+    socket.on('tts_generated', handleTTSGenerated);
+
+    return () => {
+      socket.off('tts_generated', handleTTSGenerated);
+      // Cleanup audio URL when component unmounts
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [message.messageId, audioUrl]);
+
+  const handleTTSClick = () => {
+    if (audioUrl && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } else {
+      socket.emit('request_tts', message.messageId);
+    }
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -73,6 +124,13 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
             🧵
           </button>
           <button
+            onClick={handleTTSClick}
+            className={`${isPlaying ? 'text-blue-500' : 'text-gray-400'} hover:text-gray-600 dark:hover:text-gray-300`}
+            title={isPlaying ? 'Stop' : 'Play'}
+          >
+            <FaVolumeUp size={14} />
+          </button>
+          <button
             onClick={() => onDelete(message.messageId)}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
@@ -80,6 +138,13 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
           </button>
         </div>
       )}
+
+      {/* Hidden audio element */}
+      <audio
+        ref={audioRef}
+        onEnded={handleAudioEnded}
+        className="hidden"
+      />
 
       {/* Emoji Picker - Only show for first message in group */}
       {!isGrouped && showEmojiPicker && (

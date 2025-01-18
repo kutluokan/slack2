@@ -14,6 +14,7 @@ import path from 'path';
 import fs from 'fs';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
+import { ttsService } from './services/ttsService';
 
 dotenv.config();
 
@@ -349,6 +350,29 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error fetching thread messages:', error);
       socket.emit('error', 'Failed to fetch thread messages');
+    }
+  });
+
+  socket.on('request_tts', async (messageId: string) => {
+    try {
+      const message = await messageService.getMessage(messageId);
+      if (!message) {
+        throw new Error('Message not found');
+      }
+
+      const audioBuffer = await ttsService.generateSpeech(message.content);
+      
+      // Convert buffer to base64
+      const base64Audio = audioBuffer.toString('base64');
+      
+      // Send the audio data back to the client
+      socket.emit('tts_generated', {
+        messageId,
+        audioData: base64Audio
+      });
+    } catch (error) {
+      console.error('Error generating TTS:', error);
+      socket.emit('error', 'Failed to generate speech');
     }
   });
 
