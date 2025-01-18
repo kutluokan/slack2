@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { socket } from '../config/socket';
 import Image from 'next/image';
-import { FaPaperclip } from 'react-icons/fa';
+import { FaPaperclip, FaMicrophone } from 'react-icons/fa';
 
 interface User {
   userId: string;
@@ -36,6 +36,9 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedUserIndex, setSelectedUserIndex] = useState(0);
+  const [isVoiceChatActive, setIsVoiceChatActive] = useState(false);
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
+  const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
 
   useEffect(() => {
     const handleMentionableUsers = (users: User[]) => {
@@ -179,6 +182,133 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
     return searchText.toLowerCase().includes(mentionSearch);
   });
 
+  const initializeWebRTC = async () => {
+    try {
+      console.log('Initializing WebRTC...');
+      
+      // Get ephemeral key from server
+      console.log('Fetching session token...');
+      const tokenResponse = await fetch('/webrtc/session');
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        throw new Error(`Session request failed: ${tokenResponse.status} - ${errorText}`);
+      }
+      const data = await tokenResponse.json();
+      console.log('Session token received');
+      const EPHEMERAL_KEY = data.client_secret.value;
+
+      // Create peer connection
+      console.log('Creating RTCPeerConnection...');
+      const pc = new RTCPeerConnection();
+      setPeerConnection(pc);
+
+      // Set up to play remote audio from the model
+      console.log('Setting up audio playback...');
+      const audioEl = document.createElement('audio');
+      audioEl.autoplay = true;
+      document.body.appendChild(audioEl);
+      pc.ontrack = e => audioEl.srcObject = e.streams[0];
+
+      // Add local audio track for microphone input
+      console.log('Requesting microphone access...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Microphone access granted');
+      pc.addTrack(stream.getTracks()[0], stream);
+
+      // Set up data channel
+      console.log('Creating data channel...');
+      const dc = pc.createDataChannel('oai-events');
+      setDataChannel(dc);
+      
+      // Set up data channel event handlers
+      dc.onopen = () => {
+        console.log('Data channel opened');
+        // Send initial greeting once the channel is open
+        const greeting = {
+          type: 'response.create',
+          response: {
+            modalities: ['text'],
+            instructions: 'Hi there! How can I help you today?',
+          },
+        };
+        dc.send(JSON.stringify(greeting));
+      };
+      
+      dc.onclose = () => console.log('Data channel closed');
+      dc.onerror = (error) => console.error('Data channel error:', error);
+      
+      dc.addEventListener('message', (e) => {
+        console.log('Received message:', e.data);
+        const realtimeEvent = JSON.parse(e.data);
+        
+        // Handle the event
+        if (realtimeEvent.type === 'response.create') {
+          const { text } = realtimeEvent.response;
+          if (text) {
+            onSendMessage(text, 'ai', 'AI Assistant');
+          }
+        }
+      });
+
+      // Start the session using SDP
+      console.log('Creating offer...');
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // Use the appropriate base URL based on environment
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://api.openai.com/v1/realtime'
+        : 'https://api.openai.com/v1/realtime';
+      const model = 'gpt-4o-realtime-preview-2024-12-17';
+      console.log('Sending SDP to OpenAI...');
+      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+        method: 'POST',
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${EPHEMERAL_KEY}`,
+          'Content-Type': 'application/sdp'
+        },
+      });
+
+      if (!sdpResponse.ok) {
+        const errorText = await sdpResponse.text();
+        throw new Error(`SDP request failed: ${sdpResponse.status} - ${errorText}`);
+      }
+
+      const answer = {
+        type: 'answer' as RTCSdpType,
+        sdp: await sdpResponse.text(),
+      };
+      console.log('Setting remote description...');
+      await pc.setRemoteDescription(answer);
+
+      console.log('WebRTC initialization complete');
+      setIsVoiceChatActive(true);
+    } catch (error: unknown) {
+      console.error('Detailed WebRTC initialization error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to initialize voice chat: ${errorMessage}`);
+      setIsVoiceChatActive(false);
+    }
+  };
+
+  const handleVoiceChatToggle = async () => {
+    if (!isVoiceChatActive) {
+      await initializeWebRTC();
+    } else {
+      // Clean up WebRTC connection
+      if (peerConnection) {
+        peerConnection.close();
+        setPeerConnection(null);
+      }
+      if (dataChannel) {
+        dataChannel.close();
+        setDataChannel(null);
+      }
+      setIsVoiceChatActive(false);
+    }
+  };
+
   return (
     <div className="relative">
       <div className="flex gap-2">
@@ -205,6 +335,15 @@ export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) 
           title="Attach file"
         >
           <FaPaperclip className={isUploading ? 'animate-spin' : ''} />
+        </button>
+        <button
+          onClick={handleVoiceChatToggle}
+          className={`px-4 py-2 ${
+            isVoiceChatActive ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
+          } text-white rounded-md transition-colors`}
+          title={isVoiceChatActive ? 'Stop voice chat' : 'Start voice chat'}
+        >
+          <FaMicrophone className={isVoiceChatActive ? 'animate-pulse' : ''} />
         </button>
         <button
           onClick={() => {

@@ -13,6 +13,26 @@ services:
       - backend
       - rag_upload
       - rag_query
+      - webrtc_service
+    networks:
+      - app-network
+    restart: always
+
+  webrtc_service:
+    build:
+      context: ./webrtc_service
+      dockerfile: Dockerfile
+    expose:
+      - "3001"
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,https://localhost,http://ec2-18-189-195-81.us-east-2.compute.amazonaws.com,https://ec2-18-189-195-81.us-east-2.compute.amazonaws.com}
     networks:
       - app-network
     restart: always
