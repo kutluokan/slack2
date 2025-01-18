@@ -1,3 +1,9 @@
+# SSL certificates
+nginx/ssl/
+*.pem
+*.key
+*.crt
+
 docs
 *.pem*
 # Dependencies
