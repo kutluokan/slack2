@@ -105,18 +105,35 @@ def process_file(file_path: str) -> List[Dict]:
 @app.post("/process")
 async def process_uploaded_file(file: UploadFile = File(...)):
     try:
-        # Save the uploaded file
+        logger.info("Starting file upload process")
+        
+        # 1. Clear the uploads directory first
+        logger.info("Clearing uploads directory")
+        for filename in os.listdir(UPLOAD_DIR):
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                    logger.info(f"Deleted existing file: {file_path}")
+            except Exception as e:
+                logger.error(f"Error deleting {file_path}: {str(e)}")
+        
+        # 2. Read the file content once and save it
+        logger.info(f"Reading and saving file: {file.filename}")
+        content = await file.read()
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_path, "wb") as f:
-            content = await file.read()
             f.write(content)
+        logger.info(f"File saved successfully at: {file_path}")
         
-        # Process the file
+        # 3. Process the file and upload to Pinecone
+        logger.info("Processing file and uploading to Pinecone")
         documents = process_file(file_path)
         if not documents:
+            logger.error("No documents created from file")
             return {"status": "error", "message": "No documents created from file"}
         
-        # Upload to Pinecone
+        logger.info(f"Created {len(documents)} chunks, uploading to Pinecone")
         vectorstore = PineconeVectorStore.from_documents(
             documents=documents,
             embedding=embeddings,
@@ -124,13 +141,14 @@ async def process_uploaded_file(file: UploadFile = File(...)):
             pinecone_api_key=PINECONE_API_KEY
         )
         
+        logger.info("Upload process completed successfully")
         return {
             "status": "success",
             "message": f"File processed and uploaded to vector store. Created {len(documents)} chunks.",
             "file_path": file_path
         }
     except Exception as e:
-        logger.error(f"Error processing file: {str(e)}", exc_info=True)
+        logger.error(f"Error in upload process: {str(e)}", exc_info=True)
         return {"status": "error", "message": str(e)}
 
 @app.get("/health")

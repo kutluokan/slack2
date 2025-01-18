@@ -18,11 +18,12 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 
-# Create uploads directory and set permissions
-RUN mkdir -p uploads && \
+# Create uploads directory with proper permissions
+RUN mkdir -p /app/uploads && \
     chown -R node:node /app && \
     chmod -R 755 /app && \
-    chmod 777 /app/uploads
+    chmod 777 /app/uploads && \
+    chown -R node:node /app/uploads
 
 # Switch to non-root user
 USER node

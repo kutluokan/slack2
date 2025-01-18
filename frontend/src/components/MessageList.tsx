@@ -26,7 +26,19 @@ export const MessageList = ({ messages, onReactionAdd, onThreadReply, onDelete }
     sortedMessages.forEach((message, index) => {
       const prevMessage = sortedMessages[index - 1];
       
+      // If current message has a file, push current group and start a new one
+      if (message.fileAttachment) {
+        if (currentGroup.length > 0) {
+          groups.push([...currentGroup]);
+        }
+        groups.push([message]); // Create a separate group for file message
+        currentGroup = []; // Reset current group
+        return; // Skip to next message
+      }
+      
+      // Normal message grouping logic
       if (prevMessage && 
+          !prevMessage.fileAttachment && // Don't group if previous message has a file
           prevMessage.userId === message.userId &&
           message.timestamp - prevMessage.timestamp < 300000) { // 5 minutes
         currentGroup.push(message);

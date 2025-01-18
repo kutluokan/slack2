@@ -89,9 +89,10 @@ export const messageService = {
           "#uid": "userId",
           "#uname": "username",
           "#isAI": "isAIResponse",
-          "#photo": "photoURL"
+          "#photo": "photoURL",
+          "#file": "fileAttachment"
         },
-        ProjectionExpression: "messageId, channelId, #ts, #uid, #content, #uname, #isAI, #photo, reactions",
+        ProjectionExpression: "messageId, channelId, #ts, #uid, #content, #uname, #isAI, #photo, reactions, #file",
         ScanIndexForward: false,  // Get newest messages first
         Limit: 100  // Increased limit for better context
       });
