@@ -1,5 +1,7 @@
 # SSL certificates
-nginx/ssl/
+nginx/ssl/*
+!nginx/ssl/openssl.conf
+
 *.pem
 *.key
 *.crt
