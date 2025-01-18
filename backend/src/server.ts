@@ -137,10 +137,11 @@ io.on('connection', (socket) => {
 
       // Check if this is a DM with Elon or mentions Elon/AI in a channel
       const isDMWithElon = data.channelId.startsWith('dm_') && data.channelId.includes('elon-musk-ai');
+      const isDMWithAI = data.channelId.startsWith('dm_') && data.channelId.includes('ai-assistant');
       const mentionsElon = !data.channelId.startsWith('dm_') && data.content.toLowerCase().includes('@elon');
       const mentionsAI = data.content.toLowerCase().includes('@ai');
 
-      if (isDMWithElon || mentionsElon || mentionsAI) {
+      if (isDMWithElon || isDMWithAI || mentionsElon || mentionsAI) {
         // Generate and save AI response
         const aiResponse = await messageService.handleAIInteraction(
           data.channelId,

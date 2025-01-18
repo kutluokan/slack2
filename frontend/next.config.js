@@ -17,7 +17,7 @@ const nextConfig = {
     NEXT_PUBLIC_DID_AGENT_ID: process.env.NEXT_PUBLIC_DID_AGENT_ID
   },
   images: {
-    domains: ['lh3.googleusercontent.com', 'upload.wikimedia.org'],
+    domains: ['lh3.googleusercontent.com', 'upload.wikimedia.org', 'en.wikipedia.org', 'commons.wikimedia.org'],
   },
 };
 

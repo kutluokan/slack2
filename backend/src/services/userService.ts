@@ -7,7 +7,7 @@ const AI_USER = {
   userId: 'ai-assistant',
   email: 'ai@system.local',
   displayName: 'AI Assistant',
-  photoURL: '/ai-avatar.png',
+  photoURL: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/HONDA_ASIMO.jpg/640px-HONDA_ASIMO.jpg',
   isSystemUser: true,
   createdAt: Date.now(),
   lastLogin: Date.now(),

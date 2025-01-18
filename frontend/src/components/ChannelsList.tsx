@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { socket, connectSocket } from '../config/socket';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 
 interface Channel {
   channelId: string;
@@ -22,6 +22,25 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
   const [channels, setChannels] = useState<Channel[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setIsCreating(false);
+        setNewChannelName('');
+      }
+    };
+
+    if (isCreating) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCreating]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -138,7 +157,10 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
   return (
     <div className="mt-6">
       <div className="flex justify-between items-center mb-2 px-2">
-        <h2 className="text-lg font-semibold">Channels</h2>
+        <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setIsCollapsed(!isCollapsed)}>
+          {isCollapsed ? <FaChevronRight /> : <FaChevronDown />}
+          <h2 className="text-lg font-semibold">Channels</h2>
+        </div>
         <button
           onClick={() => setIsCreating(true)}
           className="text-sm bg-gray-700 px-2 py-1 rounded hover:bg-gray-600"
@@ -147,66 +169,73 @@ export const ChannelsList = ({ user, onChannelSelect, selectedChannelId }: Chann
         </button>
       </div>
 
-      {isCreating && (
-        <div className="px-4 py-2">
-          <input
-            type="text"
-            value={newChannelName}
-            onChange={(e) => setNewChannelName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Channel name"
-            className="w-full px-2 py-1 text-sm text-black rounded"
-            autoFocus
-          />
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={createChannel}
-              className="px-2 py-1 text-sm bg-green-500 rounded hover:bg-green-600"
+      <div className={`${isCollapsed ? 'hidden' : 'block'}`}>
+        {isCreating && (
+          <div className="relative">
+            <div 
+              ref={popupRef}
+              className="absolute z-50 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 left-0" 
             >
-              Create
-            </button>
-            <button
-              onClick={() => {
-                setIsCreating(false);
-                setNewChannelName('');
-              }}
-              className="px-2 py-1 text-sm bg-gray-500 rounded hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <ul className="space-y-1">
-        {channels.length === 0 && !isCreating && (
-          <li className="px-2 py-1 text-gray-400 text-sm">
-            No channels available
-          </li>
-        )}
-        {channels.map((channel) => (
-          <li
-            key={channel.channelId}
-            className={`
-              relative px-2 py-1 rounded cursor-pointer
-              ${selectedChannelId === channel.channelId ? 'bg-gray-700' : ''}
-              group hover:bg-gray-700
-            `}
-            onClick={() => onChannelSelect({ id: channel.channelId, name: channel.name })}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="flex-grow"># {channel.name}</span>
-              <button
-                onClick={(e) => handleDeleteChannel(channel.channelId, e)}
-                className="hidden group-hover:block text-red-500 hover:text-red-400"
-                title="Delete channel"
-              >
-                <FaTrash size={12} />
-              </button>
+              <input
+                type="text"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Channel name"
+                className="w-full px-2 py-1 text-sm text-black rounded-t"
+                autoFocus
+              />
+              <div className="p-2 flex gap-2">
+                <button
+                  onClick={createChannel}
+                  className="flex-1 px-2 py-1 text-sm bg-green-500 rounded hover:bg-green-600 text-white"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setIsCreating(false);
+                    setNewChannelName('');
+                  }}
+                  className="flex-1 px-2 py-1 text-sm bg-gray-600 rounded hover:bg-gray-500 text-white"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
+          </div>
+        )}
+
+        <ul className="space-y-1">
+          {channels.length === 0 && !isCreating && (
+            <li className="px-2 py-1 text-gray-400 text-sm">
+              No channels available
+            </li>
+          )}
+          {channels.map((channel) => (
+            <li
+              key={channel.channelId}
+              className={`
+                relative px-2 py-1 rounded cursor-pointer
+                ${selectedChannelId === channel.channelId ? 'bg-gray-700' : ''}
+                group hover:bg-gray-700
+              `}
+              onClick={() => onChannelSelect({ id: channel.channelId, name: channel.name })}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="flex-grow"># {channel.name}</span>
+                <button
+                  onClick={(e) => handleDeleteChannel(channel.channelId, e)}
+                  className="hidden group-hover:block text-red-500 hover:text-red-400"
+                  title="Delete channel"
+                >
+                  <FaTrash size={12} />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }; 

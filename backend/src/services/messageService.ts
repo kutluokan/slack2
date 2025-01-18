@@ -181,7 +181,40 @@ export const messageService = {
 
     const currentReactions = currentMessage.Item.reactions || {};
     
-    // Update or create the reaction array for this emoji
+    // Check if user already reacted with this emoji
+    if (currentReactions[emoji]?.includes(userId)) {
+      // If user already reacted, remove their reaction
+      const updatedReactions = {
+        ...currentReactions,
+        [emoji]: currentReactions[emoji].filter((id: string) => id !== userId)
+      };
+
+      // Remove the emoji key if no users are left
+      if (updatedReactions[emoji].length === 0) {
+        delete updatedReactions[emoji];
+      }
+
+      const command = new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          messageId
+        },
+        UpdateExpression: 'SET reactions = :reactions',
+        ExpressionAttributeValues: {
+          ':reactions': updatedReactions
+        },
+        ReturnValues: 'ALL_NEW'
+      });
+
+      const response = await docClient.send(command);
+      return { 
+        messageId, 
+        emoji, 
+        reactions: response.Attributes?.reactions || {} 
+      };
+    }
+    
+    // If user hasn't reacted, add their reaction
     const updatedReactions = {
       ...currentReactions,
       [emoji]: currentReactions[emoji] 
@@ -225,9 +258,9 @@ export const messageService = {
     try {
       console.log(`Handling AI interaction for channel: ${channelId}`);
       
-      // Determine if this is a DM with Elon
-      const isDMWithElon = channelId.startsWith('dm_') && 
-        channelId.includes('elon-musk-ai');
+      // Determine if this is a DM with Elon or AI Assistant
+      const isDMWithElon = channelId.startsWith('dm_') && channelId.includes('elon-musk-ai');
+      const isDMWithAI = channelId.startsWith('dm_') && channelId.includes('ai-assistant');
       
       // Check if message mentions Elon in a channel
       const mentionsElon = !channelId.startsWith('dm_') && 
@@ -238,7 +271,12 @@ export const messageService = {
         return this.handleElonResponse(channelId, messages, triggerMessage);
       }
 
-      // Original AI Assistant logic
+      // If this is a DM with AI Assistant
+      if (isDMWithAI) {
+        return this.handleAIAssistantResponse(channelId, messages, triggerMessage);
+      }
+
+      // Original AI Assistant logic for channels
       console.log('Initial messages count:', messages.length);
       console.log('Trigger message:', {
         id: triggerMessage.messageId,
@@ -259,7 +297,7 @@ export const messageService = {
         content: m.content.substring(0, 50) + (m.content.length > 50 ? '...' : ''),
         isAI: m.isAIResponse
       })));
-      
+
       // Format messages for OpenAI
       const formattedMessages = contextMessages.map(msg => ({
         role: msg.isAIResponse ? 'assistant' as const : 'user' as const,
@@ -293,6 +331,52 @@ export const messageService = {
       return createdMessage;
     } catch (error) {
       console.error('Error handling AI interaction:', error);
+      throw error;
+    }
+  },
+
+  async handleAIAssistantResponse(channelId: string, messages: Message[], triggerMessage: Message) {
+    try {
+      // Ensure messages are in chronological order
+      const orderedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Take the last 25 messages for context
+      const contextMessages = orderedMessages.slice(-25);
+      
+      // Format messages for OpenAI
+      const formattedMessages = contextMessages.map(msg => ({
+        role: msg.isAIResponse ? 'assistant' as const : 'user' as const,
+        content: msg.content
+      }));
+
+      // Add the trigger message if it's not already included
+      const isTriggerMessageIncluded = contextMessages.find(msg => msg.messageId === triggerMessage.messageId);
+      if (!isTriggerMessageIncluded) {
+        formattedMessages.push({
+          role: 'user' as const,
+          content: triggerMessage.content
+        });
+      }
+
+      // Get AI response using RAG
+      const aiResponse = await aiService.generateResponse(formattedMessages);
+
+      // Create AI message
+      const aiMessage: Message = {
+        channelId,
+        timestamp: Date.now(),
+        userId: 'ai-assistant',
+        content: aiResponse,
+        username: 'AI Assistant',
+        photoURL: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/HONDA_ASIMO.jpg/640px-HONDA_ASIMO.jpg',
+        isAIResponse: true,
+        messageId: '', // Will be set in createMessage
+      };
+
+      const createdMessage = await this.createMessage(aiMessage);
+      return createdMessage;
+    } catch (error) {
+      console.error('Error handling AI Assistant response:', error);
       throw error;
     }
   },
