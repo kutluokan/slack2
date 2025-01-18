@@ -26,12 +26,6 @@ interface MessageInputProps {
   };
 }
 
-interface UploadResponse {
-  uploadUrl: string;
-  fileUrl: string;
-  key: string;
-}
-
 export const MessageInput = ({ onSendMessage, currentUser }: MessageInputProps) => {
   const [inputValue, setInputValue] = useState('');
   const [showMentions, setShowMentions] = useState(false);
