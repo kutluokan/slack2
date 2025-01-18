@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FaTrash, FaDownload } from 'react-icons/fa';
 import Image from 'next/image';
 import type { Message as MessageType } from '../hooks/useMessages';
@@ -14,6 +14,25 @@ interface MessageProps {
 export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDelete }: MessageProps) => {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showEmojiPicker &&
+          emojiPickerRef.current &&
+          emojiButtonRef.current &&
+          !emojiPickerRef.current.contains(event.target as Node) &&
+          !emojiButtonRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   const commonEmojis = ['👍', '❤️', '😂', '🎉', '🤔', '👀'];
 
@@ -33,10 +52,60 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
   return (
     <div 
       id={message.messageId}
-      className="group px-4 py-1 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
+      className="group relative px-4 py-1 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200"
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
+      {/* Message Actions - Floating above - Only show for first message in group */}
+      {!isGrouped && (
+        <div className={`absolute -top-8 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white dark:bg-gray-800 shadow-lg rounded-md px-2 py-1 z-10`}>
+          <button
+            ref={emojiButtonRef}
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            😊
+          </button>
+          <button
+            onClick={() => onThreadReply(message.messageId)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            🧵
+          </button>
+          <button
+            onClick={() => onDelete(message.messageId)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <FaTrash size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Emoji Picker - Only show for first message in group */}
+      {!isGrouped && showEmojiPicker && (
+        <div 
+          ref={emojiPickerRef}
+          className="absolute -top-20 right-4 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 z-20"
+        >
+          <div className="flex gap-2">
+            {commonEmojis.map(emoji => (
+              <button
+                key={emoji}
+                onClick={() => {
+                  if (message.messageId) {
+                    onReactionAdd(message.messageId, emoji);
+                    setShowEmojiPicker(false);
+                  }
+                }}
+                className="hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!isGrouped && (
         <div className="flex items-center mb-1">
           {message.photoURL && (
@@ -113,53 +182,7 @@ export const Message = ({ message, isGrouped, onReactionAdd, onThreadReply, onDe
             </button>
           )}
         </div>
-
-        {/* Message Actions */}
-        {showActions && (
-          <div className="flex items-center gap-2 ml-2">
-            <button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              😊
-            </button>
-            <button
-              onClick={() => onThreadReply(message.messageId)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              🧵
-            </button>
-            <button
-              onClick={() => onDelete(message.messageId)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <FaTrash size={14} />
-            </button>
-          </div>
-        )}
       </div>
-
-      {/* Emoji Picker */}
-      {showEmojiPicker && (
-        <div className="absolute mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 z-10">
-          <div className="flex gap-2">
-            {commonEmojis.map(emoji => (
-              <button
-                key={emoji}
-                onClick={() => {
-                  if (message.messageId) {
-                    onReactionAdd(message.messageId, emoji);
-                    setShowEmojiPicker(false);
-                  }
-                }}
-                className="hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }; 
